@@ -10,8 +10,10 @@ from vine import checkout
 from vine import clone
 from vine import commit
 from vine import config
+from vine import diff
 from vine import config_parser_global
 from vine import deleteBranch
+from vine import downloadJobArtifacts
 from vine import foreach
 from vine import gitlabAdmin
 from vine import grape_errors
@@ -92,12 +94,14 @@ class _Menu(WorkspaceDirHandler):
             bundle.Unbundle(), branches.Branches(), status.Status(), stash.Stash(),
             checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
             publish.Publish(), clone.Clone(), config.Config(),
+            diff.Diff(),
             writeConfig.WriteConfig(), foreach.ForEach(), merge.Merge(),
             mergeDown.MergeDown(), mergeRemote.MergeRemote(),
             deleteBranch.DeleteBranch(), resolveConflicts.ResolveConflicts(),
             review.Review(), test.Test(), updateLocal.UpdateLocal(),
             hooks.InstallHooks(), hooks.RunHook(), updateView.UpdateView(),
             version.Version(), walkthrough.Walkthrough(),
+            downloadJobArtifacts.DownloadJobArtifacts(),
             gitlabAdmin.GitlabAdmin(), quit.Quit()
             ]
 
@@ -166,6 +170,10 @@ class _Menu(WorkspaceDirHandler):
                     return chosen_option._resume(
                         option_args, workspace_dir=chosen_option.workspace_dir)
             return chosen_option.execute(option_args)
+
+        except grape_errors.GrapeGitIndexLockError as e:
+            e.LogError(f"grape-{chosen_option._key}")
+            exit(e.code)
 
         except grape_errors.GrapeGitError as e:
             logging.error(traceback.print_exc())

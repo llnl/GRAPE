@@ -28,6 +28,27 @@ def addGitConfigFlag(flag):
     global GRAPE_GIT_CONFIG_FLAGS
     GRAPE_GIT_CONFIG_FLAGS.append(flag)
 
+
+def indexLockPathFromCreationError(output):
+    """Extracts the index.lock path from git's lock creation failure.
+
+    Args:
+        output: Combined stdout and stderr from a failed git command.
+
+    Returns:
+        The path inside git's "Unable to create '<path>': File exists"
+        message when that path ends in index.lock. Returns None when the
+        output is not the specific lock creation failure.
+    """
+    match = re.search(
+        r"unable to create\s+['\"]([^'\"]*index\.lock)['\"]:\s*file exists",
+        output,
+        re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
 # Note that if capture_output is None, the return code and
 # any errors are ignored.
 def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout=True):
@@ -54,6 +75,12 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     stderr_output = completed_process.stderr.decode()
     process_output = '\n'.join([stdout_output, stderr_output]).strip()
     if completed_process.returncode != 0:
+        index_lock_path = indexLockPathFromCreationError(process_output)
+        if index_lock_path:
+            raise grape_errors.GrapeGitIndexLockError(
+                f"Error: {errmsg}", completed_process.returncode,
+                process_output, _cmd, cwd=execution_path,
+                indexLockPath=index_lock_path)
         raise grape_errors.GrapeGitError(
             f"Error: {errmsg}", completed_process.returncode, process_output,
             _cmd, cwd=execution_path)
@@ -138,7 +165,7 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=True):
+def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=True, raiseOnCommError=False):
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
     try:
@@ -152,7 +179,10 @@ def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=
         if e.commError:
             if print_warnings:
                 logging.warning("GRAPE: clone failed due to connectivity issues.")
-            return e.gitOutput
+            if raiseOnCommError:
+                raise e
+            else:
+                return e.gitOutput
         if print_warnings:
             logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
             logging.warning(e.gitOutput)
@@ -520,10 +550,23 @@ def pull(args, throwOnFail=False, *, execution_path):
         raise e
 
 
-def push(args, throwOnFail=False, *, execution_path):
+def _logRemoteMessages(output):
+    """Surfaces git server messages that are normally written to stderr."""
+    seen = set()
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("remote:") and stripped not in seen:
+            logging.info(stripped)
+            seen.add(stripped)
+
+
+def push(args, throwOnFail=False, quietRemoteMessages=False, *, execution_path):
     try:
-        return gitcmd(f"push --porcelain {args}", "Push failed",
-                      execution_path=execution_path)
+        output = gitcmd(f"push --porcelain {args}", "Push failed",
+                        execution_path=execution_path)
+        if not quietRemoteMessages:
+            _logRemoteMessages(output)
+        return output
     except grape_errors.GrapeGitError as e:
         if e.commError:
             logging.warning("WARNING: Push failed due to connectivity issues.")

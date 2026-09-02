@@ -9,6 +9,7 @@ from collections import defaultdict
 from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
+from vine import config_parser_workspace
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
@@ -31,6 +32,10 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
         # attempt to fetch the requested branch
         try:
             git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
+        except grape_errors.GrapeGitIndexLockError as e:
+            logging.warning(
+                f"Skipping sync fetch for {branch} in {repo} because git "
+                f"reported an index.lock at {e.indexLockPath}.")
         except:
             # the branch may not exist, but ignore the exception
             # and allow the checkout to throw the exception.
@@ -39,18 +44,20 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
         if verbose:
             logging.info(f"checking out {branch} in {repo}")
         git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
+    except grape_errors.GrapeGitIndexLockError as e:
+        if not quiet:
+            logging.info(
+                f"waiting for 3 seconds in {branch} in {repo} due to "
+                f"index.lock detection at {e.indexLockPath}")
+        time.sleep(3)
+        if not quiet:
+            logging.info(f"retrying checkout out of {branch} in {repo}")
+        git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
         if "already exists" in e.gitOutput and "-b" in checkoutargs:
             if not quiet:
                 logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
             git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
-        if "index.lock" in e.gitOutput:
-            if not quiet:
-                logging.info(f"waiting for 3 seconds in {branch} in {repo} due to index.lock detection")
-            time.sleep(3)
-            if not quiet:
-                logging.info(f"retrying checkout out of {branch} in {repo}")
-            git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
         else:
             logging.debug(f"checkout failed in {repo}.")
             raise e
@@ -294,7 +301,7 @@ def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
 
 
 def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
-                                       replacedProjects, *, workspace_dir,
+                                       replacedProjects, *, workspace_dir, branch,
                                        force=False):
     """Collect approval for nested subprojects whose URL changed.
 
@@ -331,30 +338,45 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
         # Non-forced operation still allows the user to approve replacing a
         # dirty nested subproject before any workspace mutation happens.
         if not force:
-            if not dirExists and wasActive:
-                prompt = (
-                    f"Nested subproject {oldPrefix} is active but its "
-                    f"workspace directory is missing.\nIts URL is changing "
-                    f"from {oldUrl} to {newUrl} and GRAPE will recreate it"
-                    f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}."
-                    "\nProceed? [y/n]"
-                )
-            elif dirExists and not worktreeClean:
-                prompt = (
-                    f"Nested subproject {oldPrefix} has local changes.\nIts "
-                    f"URL is changing from {oldUrl} to {newUrl}, so GRAPE "
-                    "must remove the current checkout to continue. "
-                    "Local changes will be lost."
-                    "Proceed? [y/n]"
-                )
+            if not dirExists: # wasActive must be true or we would have hit the continue above
+                repo_status = "\nThe workspace directory is missing, so there is nothing to remove."
             else:
-                prompt = (
-                    f"Nested subproject {oldPrefix} is changing URL from "
-                    f"{oldUrl} to {newUrl}.\nGRAPE must remove the current "
-                    f"checkout and recreate it"
-                    f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}."
-                    "\nProceed? [y/n]"
-                )
+                repo_status = ""
+                # Check for clean workspace
+                if not worktreeClean:
+                    repo_status += f"\nRepo contains local changes that will be lost!"
+                # Check for branches that are ahead of their remote tracking branches.
+                # Note this will not detect branches that have never been pushed.
+                branchList = git.branch("-vv", execution_path=working_directory)
+                if re.search(r"\[.*: ahead .*\]", branchList):
+                    repo_status += f"\nRepo contains some branches that are ahead of their tracking branches:"
+                    for line in branchList.splitlines():
+                        if re.search(r"\[.*: ahead .*\]", line):
+                            repo_status += f"\n   {line}"
+                # Check if this branch has diffs compared to the public branch
+                public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+                if public != branch:
+                    diff = None
+                    try:
+                        diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
+                    except grape_errors.GrapeGitError as e:
+                        if f"bad revision '{public}'" in e.gitOutput:
+                            git.fetch(f"origin {public}:{public}", execution_path=working_directory)
+                            diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
+                    if diff:
+                        repo_status += f"\n{branch} contains changes relative to {public}:"
+                        for line in diff.splitlines()[:10]:
+                            repo_status += f"\n   {line}"
+
+            prompt = (
+                f"Nested subproject {oldPrefix} is changing URL\n"
+                f"   from {oldUrl}\n   to {newUrl}.\nGRAPE must remove the current "
+                f"checkout and recreate it"
+                f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}.\n"
+                f"*** If your branch does not exist in the new repo, you will have to run grape uv to create it. ***"
+                f"{repo_status}"
+                "\nProceed? [y/n]"
+            )
 
             approved = utility.userInput(prompt, 'n')
             if not approved:
@@ -896,7 +918,7 @@ class Checkout(Option, WorkspaceDirHandler):
             if replacedProjects:
                 replacementPlan = preflightReplacedNestedSubprojects(
                     previousConfig, branchConfig, replacedProjects,
-                    workspace_dir=self.workspace_dir, force=args["-F"])
+                    workspace_dir=self.workspace_dir, branch=branch, force=args["-F"])
                 if replacementPlan is None:
                     return False
 

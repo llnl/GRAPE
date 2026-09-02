@@ -188,23 +188,11 @@ class Repo(StashyNode):
                 ret.append(r)
         return ret
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
-        """reviewers"""
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, wip=None, labels=[]):
         if labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
 
-        flattened_reviewers = set()
-
-        for review_rule_name in reviewers:
-            reviewer_group = reviewers[review_rule_name]
-            users = reviewer_group['reviewers']
-
-            for user in users:
-                flattened_reviewers.add(user)
-
-        flattened_reviewers = list(flattened_reviewers)
-
-        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=flattened_reviewers)
+        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 
@@ -299,7 +287,7 @@ class PullRequest(StashyNode):
         return ret
 
     def labels(self):
-        # Not implemented
+        logging.warning("GRAPE: WARNING: labels are not implemented for Atlassian pull requests")
         return []
 
     def state(self):
@@ -334,6 +322,12 @@ class PullRequest(StashyNode):
         logging.error("GRAPE: ERROR: diffs not implemented for Atlassian")
         exit(1)
 
+    def unresolved_threads(self, ignored_commenters=None):
+        logging.warning(
+            "GRAPE: WARNING: unresolved merge request thread inspection is not implemented for Atlassian pull requests"
+        )
+        return None
+
     def approved(self):
         reviewers = self.reviewers()
         ret = True
@@ -349,7 +343,7 @@ class PullRequest(StashyNode):
         return self.node["version"]
 
     # reviewers is a list of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, wip=None, add_labels=[], remove_labels=[]):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -364,26 +358,13 @@ class PullRequest(StashyNode):
         #if reviewers is not None:
         #    for r in reviewers:
         #        reviewerList.append(dict(user=dict(name=r)))
-        flattened_reviewers = set()
-
-        for review_rule_name in reviewers:
-            reviewer_group = reviewers[review_rule_name]
-            users = reviewer_group['reviewers']
-
-            for user in users:
-                flattened_reviewers.add(user)
-
-        flattened_reviewers = list(flattened_reviewers)
-
         if add_labels or remove_labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
-        if non_approvers:
-           logging.warning("GRAPE: WARNING: non_approvers not implemented Bitbucket Pull Requests")
         if wip is not None:
            logging.warning("GRAPE: WARNING: wip not implemented Bitbucket Pull Requests")
 
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
-        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=flattened_reviewers), self._stashy_pull_requests)
+        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewers), self._stashy_pull_requests)
 
     def regeneratePipeline(self):
         pass
@@ -399,7 +380,7 @@ class PullRequest(StashyNode):
                f"Reviewers: {all_reviewers}\n" + \
                f"Description: {self.description()}\n"
 
-    def merge(self):
+    def merge(self, merge_commit_message=None, should_remove_source_branch=False, merge_when_pipeline_succeeds=False):
         canMerge = self._stashy_pull_request.can_merge()
         if canMerge is True:
             response = self._stashy_pull_request.merge(version=self.node["version"])
@@ -479,6 +460,9 @@ class TestPullRequest(TestStashResponse):
         else:
             return ""
 
+    def unresolved_threads(self, ignored_commenters=None):
+        return None
+
 class TestPullRequests(TestStashResponse):
 
     def __init__(self, parent):
@@ -506,6 +490,29 @@ class TestRepo(TestStashResponse):
 
     def pullRequests(self, direction="OUTGOING", at=None, state="OPEN"):
         return self.pull_requests.all(direction,at,state)
+
+    def getFile(self, path, revision):
+        if path == '.grapeconfig':
+            return (
+                '[flow]\n'
+                'publicBranches = master\n'
+                'topicPrefixMappings = ?:master\n'
+                '\n'
+                '[workspace]\n'
+                'manageSubmodules = False\n'
+                'submoduleTopicPrefixMappings = ?:master\n'
+            )
+
+        logging.error(f"TESTBITBUCKET: file {path} does not exist")
+        response = TestStashResponse(errors=[{'message': f'File {path} not found'}])
+        response.status_code = 404
+        raise stashy_errors.NotFoundException(response)
+
+    def getOpenPullRequest(self, source, target):
+        for request in self.pull_requests.all():
+            if request.fromRef() == source and request.toRef() == target:
+                return request
+        return None
 
     def createPullRequest(self, title,branch,target_branch, description=None,reviewers=None):
 

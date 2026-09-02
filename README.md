@@ -32,7 +32,7 @@ Create internal_release branch.  For this internal_release branch, you should me
    
 Publish an internal_release branch. After publish, the CI will have been assigned an incorrect version.
 
-Delete the tag created by the CI and tag with the appropriate version.
+Delete the incorrect tag created by the CI on master and tag with the appropriate version.
  v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
 
     git fetch origin master:master
@@ -58,6 +58,13 @@ Tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag
     git tag -a v<MAJOR>.<NEWDEV>.0 -m "Manually tagged" HEAD
     git push origin
     git push --tags origin v<MAJOR>.<NEWDEV>.0
+
+Delete the incorrect tag created by the CI on develop.
+ v\<MAJOR\>.\<NEWPROD\>.1 is incorrect, v\<MAJOR\>.\<NEWDEV\>.0 is correct
+ (e.g. develop will be tagged with both v1.42.1 and v1.43.0, the 1.42 tag is incorrect)
+
+    git tag -d v<MAJOR>.<NEWPROD>.1
+    git push origin --delete v<MAJOR>.<NEWPROD>.1
 
 ## Introducing the `.grapeconfig` file
 
@@ -597,13 +604,14 @@ Arguments:
 grape push pushes your current branch to origin for your outer level repo and all subprojects.
 it uses 'git push -u origin <branch>' for the git command.
 
-Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll]
+Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll] [--quietRemoteMessages]
 
 Options:
     --noTopLevel            Don't perform push in top level repo.
     --noRecurse             Don't perform pushes in submodules.
     --noRecurseSubprojects  Don't perform pushes in nested subprojects.
     --pushAll               Push all repositories regardless of whether local is ahead of origin.
+    --quietRemoteMessages   Suppress `remote: ...` messages and GitLab review hints from git push output.
 
 
 ## pull
@@ -630,7 +638,7 @@ Options:
 
 
 Arguments:
-    <filetree>... The relative paths of files to include in this commit.
+    <filetree>... Files or directories to include, resolved relative to the current working directory.
 
 
 ## publish
@@ -662,11 +670,11 @@ Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
                      [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                      [--tickVersion=<bool> [-T <arg>]...]
                      [--tickOnCascade=<slot> ]
-                     [--user=<BitbucketUserName>]
+                     [--user=<CodeReviewUserName>]
                      [--codeReviewsURL=<httpsURL>]
                      [--verifySSL=<bool>]
-                     [--project=<BitbucketProjectKey>]
-                     [--repo=<BitbucketRepoName>]
+                     [--project=<CodeReviewProject>]
+                     [--repo=<CodeReviewRepo>]
                      [-R <arg>]...
                      [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                      [--useBitbucket=<bool>]
@@ -681,7 +689,7 @@ Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
         grape-publish --continue
         grape-publish --abort
         grape-publish --printSteps
-        grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+        grape-publish --quick -m <msg> [--user=<CodeReviewUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
         grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
         grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
                                  --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
@@ -781,21 +789,21 @@ Options:
                               Default behavior governed by the flow.topicCascadeTick mapping.
     -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
                               and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>             Your Bitbucket/Gitlab username.
-    --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+    --user=<user>             Your code review username.
+    --codeReviewsURL=<url>    Your GitLab or Bitbucket URL, e.g. https://your.home.org/gitlab .
                               [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
                               [default: .grapeconfig.project.verifySSL]
-    --project=<project>       Your Bitbucket Project. See grape-review for more details.
+    --project=<project>       Your GitLab group/namespace or Bitbucket project. See grape-review for more details.
                               [default: .grapeconfig.project.name]
-    --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+    --repo=<repo>             Your GitLab project/repo or Bitbucket repo. See grape-review for more details.
                               [default: .grapeconfig.repo.name]
     -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                               Type grape review --help for valid options.
     --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
     --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
     --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
-    --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --useBitbucket=<bool>     Legacy name for whether or not to use code review pull/merge requests. [default: .grapeconfig.publish.useStash]
     --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                               by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                               if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -827,7 +835,7 @@ Options:
                               [default: .grapeconfig.publish.emailMaxFiles]
     --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                               markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge             Perform the merge using the Bitbucket REST API.
+    --remoteMerge             Perform the merge using the code review provider REST API.
     --quiet                   Suppress output from custom build and test steps unless there is a failure.
     --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                               REST API.
@@ -897,6 +905,77 @@ Options:
     --p4diff        will set up p4merge as your diff tool.
     --nop4diff      will skip p4diff questions.
     --git-p4        will configure your repo for use with git-p4 (deprecated)
+
+
+## diff
+
+grape diff
+Print diffs across the outer workspace repo, active submodules, and active nested subprojects.
+
+Usage: grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1>
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> <ref2>
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> <ref2> -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1>
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> -- <path>...
+
+Options:
+    --patch                  Print the patch output. This is the default.
+    --stat                   Print diffstat output instead of patches.
+    --name-only              Print only changed file names.
+    --name-status            Print changed file names with status letters.
+    --cached                 Compare staged changes instead of worktree changes. Supports zero or one ref.
+    --mergeDiff              With two refs, diff changes on <ref2> from the common ancestor (<ref1>...<ref2>).
+    --rawDiff                With two refs, diff the exact branch tips (<ref1> <ref2>) (default).
+    --noFetch                Do not fetch missing origin refs before diffing.
+    --noTopLevel             Do not diff the outer level project.
+    --noSubmodules           Do not diff active submodules.
+    --noNestedSubprojects    Do not diff active nested subprojects.
+    <ref1>                   Reference to compare against the worktree, or the left side of a two-ref diff.
+    <ref2>                   Right side of a two-ref diff.
+    <path>                   Path to diff, resolved relative to the current working directory after `--`.
 
 
 ## writeConfig
@@ -1080,6 +1159,8 @@ Arguments:
 grape review
 Usage: grape-review [--update | --add]
                     [--draft | --ready]
+                    [--printUnresolvedComments]
+                    [--ignoreCommenter=<user>...]
                     [--title=<title>]
                     [--descr=<file> | -m <description>]
                     [--user=<userName> ]
@@ -1114,6 +1195,8 @@ Options:
                                 is set, an error will be generated.
     --draft                     Mark pull request as draft.
     --ready                     Mark pull request as ready (not draft).
+    --printUnresolvedComments   Read-only mode. Skip pushing and merge request updates, and print unresolved merge request thread comments grouped by repo. Supported for GitLab merge requests only.
+    --ignoreCommenter=<user>    Ignore comments from the given user when printing unresolved merge request threads. May be specified multiple times. GitLabDuo is ignored by default only when this option is not provided. Use --ignoreCommenter="none" to include all comments, including GitlabDuo's.
     --title=<title>             The pull request`s title.
     --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
     -m <description>            The pull request description.
@@ -1171,13 +1254,29 @@ Options:
 
 grape test
 Runs grape's unit tests.
-Usage: grape-test [--debug] [<suite>]...
+Usage: grape-test [--debug] [--durations=<n>] [--workers=<n>] [--quiet] [--changed] [--base=<ref>] [<suite>]...
 
 
 Arguments:
 <suite>  The name of the suite to test. The default is all.
          Enter listSuites as the suite name to list available suites.
          <suite> = <suite name>.<test> will run a particular test in a suite.
+
+Options:
+--debug          Disable output capture and preserve debug logging behavior.
+--durations=<n>  Show the slowest n tests in pytest output. Pytest prints
+                 a summary of the slowest individual tests at the end of
+                 the run. [default: 0]
+--workers=<n>    Run multiple suite selectors in parallel subprocesses.
+                 This is GRAPE-level parallelism: each selected suite is
+                 handed to a separate pytest process rather than using a
+                 pytest plugin such as xdist. [default: 1]
+--quiet          Skip live timing-chart redraws and print the chart only
+                 once at the end, like `grape -d test`.
+--changed        Run suites mapped from files changed since --base.
+                 This is intended for local developer loops where a full
+                 suite run would be unnecessarily broad.
+--base=<ref>     Base ref for --changed selection. [default: origin/master]
 
 
 ## up
@@ -1473,6 +1572,54 @@ Options:
     <b2>                        The second branch to compare.
                                 Defaults to the public branch for <b1>.
 
+
+## download_job_artifacts
+
+grape download_job_artifacts
+Download matching files from GitLab CI job artifacts.
+Usage: grape-download_job_artifacts [--job-id=<id>]
+                                    [--job-name=<name>]
+                                    [--start=<datetime>]
+                                    [--end=<datetime>]
+                                    --artifact-filter=<pattern>
+                                    [--list-only]
+                                    [--output-dir=<dir>]
+                                    [--user=<userName>]
+                                    [--codeReviewsURL=<url>]
+                                    [--verifySSL=<bool>]
+                                    [--project=<prj>]
+                                    [--repo=<repo>]
+                                    [--ssh_pat_url=<url>]
+                                    [--ssh_pat_port=<int>]
+
+Options:
+    --job-id=<id>              Download artifacts from the specified job identifier instead of searching failed jobs.
+    --job-name=<pattern>       Restrict failed-job searches to jobs with names matching the given regular
+                               expression.
+    --start=<datetime>         Inclusive start of the search range for failed jobs. Accepts values like "2 days ago",
+                               "yesterday", "today", "now", or ISO-8601 date/datetime.
+    --end=<datetime>           Inclusive end of the search range for failed jobs. Accepts values like "now", "today",
+                               or ISO-8601 date/datetime.
+    --artifact-filter=<pattern>
+                               Required shell-style glob used to match artifact file names or archive paths.
+    --list-only                Inspect matching artifact entries without extracting files to disk.
+    --output-dir=<dir>         Directory to extract matching files into.
+                               [default: .]
+    --user=<userName>          Your GitLab user name.
+    --codeReviewsURL=<url>     The code review platform url, e.g. https://your.host.org/gitlab.
+                               [default: .grapeconfig.project.codeReviewsURL]
+    --verifySSL=<bool>         Set to False to ignore SSL certificate verification issues.
+                               [default: .grapeconfig.project.verifySSL]
+    --project=<prj>            The top level project (Bitbucket) or group (GitLab) name.
+                               [default: .grapeconfig.project.name]
+    --repo=<repo>              The top level repository name.
+                               [default: .grapeconfig.repo.name]
+    --ssh_pat_url=<url>        SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                               REST API.
+                               [default: .grapeconfig.repo.ssh_pat_url]
+    --ssh_pat_port=<int>       Port number to issue ssh command over to generate a Personal Access Token for authentication
+                               into a Code Review service's REST API.
+                               [default: .grapeconfig.repo.ssh_pat_port]
 
 ## gitlab-admin
 

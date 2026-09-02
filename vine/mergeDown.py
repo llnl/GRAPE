@@ -27,6 +27,36 @@ def mergeSubmoduleCandidates(submodules, movedActiveSubmodules):
     return list(dict.fromkeys(submodules + movedActiveSubmodules))
 
 
+def filterSubmodulesForMergedWorkspace(submodules, *, workspace_dir):
+    """Return merge candidates that still exist in the merged workspace.
+
+    The active-submodule query can include stale registrations after an
+    outer-level merge removes a submodule. Such a path cannot be used as a
+    working directory for a submodule merge.
+
+    Args:
+        submodules: Candidate submodule paths selected before the outer merge.
+        workspace_dir: Top-level workspace directory.
+
+    Returns:
+        Candidate paths that remain configured and have a working directory.
+    """
+    mergedSubmodules = set(git.getAllSubmodules(execution_path=workspace_dir))
+    availableSubmodules = [
+        sub for sub in submodules
+        if sub in mergedSubmodules and
+        os.path.isdir(os.path.join(workspace_dir, sub))
+    ]
+    removedSubmodules = [
+        sub for sub in submodules if sub not in availableSubmodules
+    ]
+    if removedSubmodules:
+        logging.info(
+            "Skipping submodule merge candidates no longer available after "
+            "the outer-level merge: " + ", ".join(removedSubmodules))
+    return availableSubmodules
+
+
 def filterSubmodulesRemovedByMerge(currentRevision, targetRevision,
                                    removedModules, *, workspace_dir):
     """Keep only submodules the target side actually removed.
@@ -334,22 +364,6 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
                 return False
 
-        if ("nestedReplacementPlan" not in self.progress and
-                not self.progress.get("outerLevelDone", False)):
-            previousConfig, branchConfig, _, _, replacedProjects = (
-                checkout.parseGrapeConfigNestedProjectDiffOutput(
-                    startingSHA, branch, workspace_dir=self.workspace_dir))
-            replacedProjects = filterReplacedNestedSubprojectsForMerge(
-                startingSHA, branch, replacedProjects,
-                workspace_dir=self.workspace_dir)
-            if replacedProjects:
-                replacementPlan = checkout.preflightReplacedNestedSubprojects(
-                    previousConfig, branchConfig, replacedProjects,
-                    workspace_dir=self.workspace_dir)
-                if replacementPlan is None:
-                    return False
-                self.progress["nestedReplacementPlan"] = replacementPlan
-
         if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
@@ -364,6 +378,22 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
 
         # "utility.userInput" is a function
         git.fixActiveSubmodules(self.workspace_dir, utility.userInput)
+
+        if ("nestedReplacementPlan" not in self.progress and
+                not self.progress.get("outerLevelDone", False)):
+            previousConfig, branchConfig, _, _, replacedProjects = (
+                checkout.parseGrapeConfigNestedProjectDiffOutput(
+                    startingSHA, branch, workspace_dir=self.workspace_dir))
+            replacedProjects = filterReplacedNestedSubprojectsForMerge(
+                startingSHA, branch, replacedProjects,
+                workspace_dir=self.workspace_dir)
+            if replacedProjects:
+                replacementPlan = checkout.preflightReplacedNestedSubprojects(
+                    previousConfig, branchConfig, replacedProjects,
+                    workspace_dir=self.workspace_dir, branch=git.currentBranch(execution_path=self.workspace_dir))
+                if replacementPlan is None:
+                    return False
+                self.progress["nestedReplacementPlan"] = replacementPlan
 
         addedModules = []
         removedModules = []
@@ -439,6 +469,15 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                     git.checkout(f"-B {currentBranch} HEAD",
                                  execution_path=sub_dir)
 
+        # A submodule may have been removed by the outer-level merge after
+        # it was selected as a merge candidate. Perform this check after
+        # reinitializing changed or added submodules so valid candidates are
+        # not discarded before their worktrees are restored.
+        submodules = filterSubmodulesForMergedWorkspace(
+            submodules, workspace_dir=self.workspace_dir)
+        recurse = recurseSubmoduleChanges and len(submodules) > 0
+        args["--recurse"] = recurse
+
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
             logging.warning("Initial merge failed. Resolve issue and try again. ")
@@ -458,6 +497,18 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                         workspace_dir=self.workspace_dir):
                     return False
             self.progress["nestedReplacementsDone"] = True
+            ret = menu.applyMenuChoice("status", ['--failIfInconsistent'])
+            if ret is False:
+                self.progress["stopPoint"] = "resolve conflicts"
+                self.dumpProgress(args, "GRAPE: Workspace inconsistent! Please resolve using grape uv " +
+                                        f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
+                return False
+            else:
+                logging.info("Calling grape up to ensure topic and public branches are up-to-date after nested project replacements.")
+                upCmd = ['up', f'--public={args["--public"]}']
+                if not args["--forceUpdate"]:
+                    upCmd.append("--noForce")
+                ret = menu.applyMenuChoice('up', upCmd)
             nested = config_parser_user.getAllActiveNestedSubprojectPrefixes(
                 workspaceDir=self.workspace_dir)
 
@@ -492,6 +543,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         # clear out the progress now that we're done so that when we are called a second time during a publish
         # we don't just skip the md
         self.progress = {}
+        logging.info("Merges completed successfully.")
         return True
 
     def lookupActiveMergeTrainBranches(self, args):
@@ -762,12 +814,13 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         info_or_true = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=handleMergeSubprojectMRE)
         isSubmodule = [x[2][1] for x in listOfRepoBranchArgTuples]
         all_good = True
+        conflictedNestedSubprojects = []
         for info, repo, isSubmodule in zip(info_or_true, repos, isSubmodule):
             if info is True:
                 # stage the updated submodule
                 if isSubmodule:
                     git.add(repo, execution_path=self.workspace_dir)
-                logging.info(f"{repo} merged successfully")
+                logging.debug(f"{repo} merged successfully")
                 self.progress[f"Subproject: {repo}"] = "finished"
             else:
                 logging.info(info)
@@ -775,10 +828,20 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                    self.progress[f"Subproject: {repo}"] = "finished"
                 else:
                    all_good = False
+                   if not isSubmodule and "issued conflicts" in info:
+                       conflictedNestedSubprojects.append(repo)
         if not all_good:
             if not ignoreInProgress:
                self.progress["stopPoint"] = "subproject merge"
-               self.dumpProgress(args)
+               if conflictedNestedSubprojects:
+                   repoList = ", ".join(conflictedNestedSubprojects)
+                   noun = "subproject" if len(conflictedNestedSubprojects) == 1 else "subprojects"
+                   self.dumpProgress(
+                       args,
+                       f"GRAPE: Merge conflict encountered in nested {noun}: {repoList}. "
+                       f"Resolve the conflicts there, then continue with grape {args['<<cmd>>']} --continue.")
+               else:
+                   self.dumpProgress(args)
             return False
         return True
 
@@ -832,12 +895,29 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
 
 def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
     squashArg = "--squash" if args["--squash"] else ""
-    try:
-        git.merge(f"{squashArg} {branch} {strategy}",
-                  execution_path=execution_path)
-        return True
-    except grape_errors.GrapeGitError as error:
-        logging.error(error.gitOutput)
+    attempted_index_lock_recovery = False
+    caught_error = None
+    while True:
+        try:
+            git.merge(f"{squashArg} {branch} {strategy}",
+                      execution_path=execution_path)
+            return True
+        except grape_errors.GrapeGitIndexLockError as error:
+            error.LogError(f"merge {branch} in {execution_path}")
+            if not attempted_index_lock_recovery:
+                attempted_index_lock_recovery = True
+                # Only retry once after the user explicitly removes the lock.
+                if handleIndexLockError(error):
+                    logging.info("Retrying merge after removing index.lock.")
+                    continue
+            return False
+        except grape_errors.GrapeGitError as error:
+            logging.error(error.gitOutput)
+            caught_error = error
+            break
+
+    error = caught_error
+    if error:
         if error.has_conflict():
             if args['--at'] or args['--ay']:
                 if args['--at']:
@@ -872,6 +952,48 @@ def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
             logging.error(f"Merge command {error.gitCommand} failed." +
                           " Quitting.")
             return False
+
+
+def handleIndexLockError(error):
+    """Prompts the user before removing a git index lock file.
+
+    Args:
+        error: GrapeGitIndexLockError containing the lock path reported by git.
+
+    Returns:
+        True when the lock file was removed. False when the user declines,
+        the path is unavailable, or the path does not point to a file.
+    """
+    lock_path = error.indexLockPath
+    if not lock_path:
+        logging.warning("Git reported an index.lock, but GRAPE could not determine its path.")
+        return False
+
+    logging.warning(
+        "Git reported an index.lock. This can happen when another git "
+        "process is still running or when a previous git command exited "
+        "without cleaning up.")
+    remove_lock = utility.userInput(
+        f"Remove {lock_path}? WARNING: only do this if you are sure no other "
+        "git process is running for this repository. (y/n)",
+        "n")
+    if not remove_lock:
+        logging.info(f"Leaving {lock_path} in place.")
+        return False
+
+    if not os.path.isfile(lock_path):
+        logging.warning(f"{lock_path} does not exist or is not a file.")
+        return False
+
+    try:
+        os.remove(lock_path)
+    except PermissionError:
+        logging.warning(f"Could not remove {lock_path}: permission denied.")
+        return False
+    except OSError:
+        return False
+    logging.info(f"Removed {lock_path}.")
+    return True
 
 @log_wrapper
 def continueLocalMerge(args, *, execution_path):
@@ -909,7 +1031,8 @@ def mergeIntoCurrent(branchName, args, projectName, warnOnConflict=True, *, exec
 
     if strategy == 'am':
         args["--am"] = True
-        logging.info("Merging using git's default strategy...")
+        if projectName == "outer level project":
+            logging.info("Merging using git's default strategy...")
         choice = merge(branchName, "", args, warnOnConflict, execution_path=execution_path)
     elif strategy in ['as', 'at', 'ay']:
         if strategy == 'as':
@@ -920,11 +1043,16 @@ def mergeIntoCurrent(branchName, args, projectName, warnOnConflict=True, *, exec
             # see
             # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
             # for details.
-            logging.info("Merging forcing conflicts whenever both branches edited the same file...")
+            if projectName == "outer level project":
+                logging.info("Merging forcing conflicts whenever both branches edited the same file...")
         elif strategy == 'at':
             args["--at"] = True
+            if projectName == "outer level project":
+                logging.info(f"Merging, resolving conflicts cleanly with changes in {branchName}...")
         elif strategy == 'ay':
             args["--ay"] = True
+            if projectName == "outer level project":
+                logging.info("Merging, resolving conflicts cleanly with current branch's changes...")
         base = git.gitDir(execution_path=execution_path)
         if base == "":
             return False
@@ -952,12 +1080,14 @@ def mergeIntoCurrent(branchName, args, projectName, warnOnConflict=True, *, exec
             os.remove(attributes)
     elif strategy == 'aT':
         args["--aT"] = True
-        logging.info("Merging using recursive strategy, resolving " +
-                     f"conflicts cleanly with changes in {branchName}...")
+        if projectName == "outer level project":
+            logging.info("Merging using recursive strategy, resolving " +
+                         f"conflicts cleanly with changes in {branchName}...")
         choice = merge(branchName, "-Xtheirs", args, warnOnConflict, execution_path=execution_path)
     elif strategy == 'aY':
         args["--aY"] = True
-        logging.info("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
+        if projectName == "outer level project":
+            logging.info("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
         choice = merge(branchName, "-Xours", args, warnOnConflict, execution_path=execution_path)
 
     return choice
@@ -967,6 +1097,9 @@ def handleMergeSubprojectMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         try:
             raise e
+        except grape_errors.GrapeGitIndexLockError as e2:
+            handleIndexLockError(e2)
+            e2.LogError(f"mergeSubproject of {branch} {repo}")
         except grape_errors.GrapeGitError as e2:
             logging.error(f" mergeSubproject  of {branch} {repo}")
             logging.error(f"{e2.gitOutput}")
@@ -978,8 +1111,8 @@ def mergeSubproject(branch, repo, args, *, workspace_dir):
     mergeArgs["--public"] = subPublic
 
     submodule_or_subproject = "submodule" if isSubmodule else "subproject"
-    logging.info(f"Merging {subPublic} into {git.currentBranch(execution_path=repo)} " +
-                 f"for {submodule_or_subproject} {repo}")
+    logging.debug(f"Merging {subPublic} into {git.currentBranch(execution_path=repo)} " +
+                  f"for {submodule_or_subproject} {repo}")
     git.fetch("origin", execution_path=repo)
     # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
     hasRemote = git.hasBranch(f"origin/{subPublic}", execution_path=repo)

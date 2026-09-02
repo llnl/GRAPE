@@ -43,7 +43,8 @@ Options:
                          This non-interactive option is for CI jobs and where users see fit.
     --np=<int>           The number of processes grape should use when performing parallel operations. Values
                          less than 1 will use max number of processors available.
-                         Default value is configurable via the concurrency-control section in the .grapeconfig:
+                         The default value (0) maps to -1, unless configured via the concurrency-control section
+                         in the .grapeconfig:
                            #### default configuration ###
                            [concurrency-control]
                            # number of tasks for non-exclusive nodes.

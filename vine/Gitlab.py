@@ -1,10 +1,16 @@
 import getpass
+import fnmatch
+import io
 import logging
 import os
+import posixpath
 import re
+import shutil
 import subprocess
 import sys
 import time
+import zipfile
+from datetime import datetime, timezone
 try:
     grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
@@ -17,7 +23,6 @@ from vine import GrapeKeyring
 from vine import utility
 from vine.option import Option
 
-GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
 # Grape has the following definitions, most strongly correllated with Bitbucket definitions:
 # Project - collection of repositories (roughly analogous to a Gitlab Group)
 # Repo - the actual repository (roughly analogous to a Gitlap Project)
@@ -269,6 +274,13 @@ class GrapeGitlabAdapter:
 
         return Repo(project, self._gitlab)
 
+
+def _truncate_preview(text, limit=100):
+    text = ' '.join((text or '').split())
+    if len(text) > limit:
+        return text[:limit - 3] + '...'
+    return text
+
 class Project:
     def __init__(self, gitlab_group, gitlab):
         self.group = gitlab_group
@@ -390,6 +402,278 @@ class Repo:
         self.project = gitlab_project
         self.gitlab = gitlab
 
+    @staticmethod
+    def _parse_gitlab_datetime(value):
+        if not value:
+            return None
+        normalized = value.strip()
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    @classmethod
+    def _job_reference_datetime(cls, job):
+        for attr in ("finished_at", "started_at", "created_at"):
+            parsed = cls._parse_gitlab_datetime(getattr(job, attr, None))
+            if parsed is not None:
+                return parsed
+        return None
+
+    @classmethod
+    def _pipeline_reference_datetime(cls, pipeline):
+        for attr in ("updated_at", "finished_at", "created_at"):
+            parsed = cls._parse_gitlab_datetime(getattr(pipeline, attr, None))
+            if parsed is not None:
+                return parsed
+        return None
+
+    @staticmethod
+    def _artifact_matches_filter(artifact_name, artifact_filter):
+        return (
+            fnmatch.fnmatchcase(artifact_name, artifact_filter)
+            or fnmatch.fnmatchcase(posixpath.basename(artifact_name), artifact_filter)
+        )
+
+    @staticmethod
+    def _safe_job_dir_name(job):
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", getattr(job, "name", "") or "job").strip("._")
+        safe_name = safe_name if safe_name else "job"
+        return f"job_{job.id}_{safe_name}"
+
+    @staticmethod
+    def _safe_artifact_destination(job_output_dir, artifact_name):
+        normalized = os.path.normpath(artifact_name.lstrip("/"))
+        if normalized.startswith("..") or os.path.isabs(normalized):
+            return None
+
+        destination = os.path.abspath(os.path.join(job_output_dir, normalized))
+        if os.path.commonpath([job_output_dir, destination]) != job_output_dir:
+            return None
+        return destination
+
+    def _find_pipelines_for_job_search(self, started_after, started_before):
+        query_parameters = {}
+        if started_after:
+            query_parameters["updated_after"] = started_after.isoformat()
+        if started_before:
+            query_parameters["updated_before"] = started_before.isoformat()
+
+        pipelines = self.project.pipelines.list(
+            get_all=True,
+            per_page=100,
+            order_by="updated_at",
+            sort="desc",
+            query_parameters=query_parameters,
+        )
+        logging.debug(
+            "GitLab returned %d pipeline(s) before job filtering for project %s.",
+            len(pipelines),
+            getattr(self.project, "path_with_namespace", getattr(self.project, "name", "<unknown>")),
+        )
+        logging.debug(
+            "Requested project pipelines with updated_after=%s, updated_before=%s, order_by=updated_at, "
+            "sort=desc, per_page=100.",
+            query_parameters.get("updated_after"),
+            query_parameters.get("updated_before"),
+        )
+        return pipelines
+
+    def find_failed_jobs(self, started_after, started_before, job_name=None):
+        pipelines = self._find_pipelines_for_job_search(started_after, started_before)
+        job_name_regex = re.compile(job_name) if job_name else None
+        matching_jobs = []
+        for pipeline in pipelines:
+            pipeline_time = self._pipeline_reference_datetime(pipeline)
+            logging.debug(
+                "Inspecting pipeline %s with reference time %s for failed jobs.",
+                pipeline.id,
+                pipeline_time.isoformat() if pipeline_time else None,
+            )
+
+            failed_jobs = pipeline.jobs.list(
+                get_all=True,
+                per_page=100,
+                scope="failed",
+            )
+            logging.debug(
+                "Pipeline %s returned %d failed job(s) before filtering.",
+                pipeline.id,
+                len(failed_jobs),
+            )
+
+            for job in failed_jobs:
+                if job_name_regex and not job_name_regex.search(job.name):
+                    logging.debug(
+                        "Skipping failed job %s (%s): name does not match requested job-name regex %s.",
+                        job.id,
+                        job.name,
+                        job_name,
+                    )
+                    continue
+
+                job_time = self._job_reference_datetime(job)
+                if started_after and (job_time is None or job_time < started_after):
+                    logging.debug(
+                        "Skipping failed job %s (%s): reference time %s is before start bound %s.",
+                        job.id,
+                        job.name,
+                        job_time.isoformat() if job_time else None,
+                        started_after.isoformat(),
+                    )
+                    continue
+                if started_before and (job_time is None or job_time > started_before):
+                    logging.debug(
+                        "Skipping failed job %s (%s): reference time %s is after end bound %s.",
+                        job.id,
+                        job.name,
+                        job_time.isoformat() if job_time else None,
+                        started_before.isoformat(),
+                    )
+                    continue
+                logging.debug(
+                    "Matched failed job %s (%s) with reference time %s from pipeline %s.",
+                    job.id,
+                    job.name,
+                    job_time.isoformat() if job_time else None,
+                    pipeline.id,
+                )
+                matching_jobs.append(job)
+
+        matching_jobs.sort(
+            key=lambda job: self._job_reference_datetime(job) or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        logging.info(
+            "Found %d failed job(s) matching the requested filters across %d pipeline(s).",
+            len(matching_jobs),
+            len(pipelines),
+        )
+        return matching_jobs
+
+    def _collect_matching_files_from_job(self, job, artifact_filter, output_dir, *, list_only=False):
+        job = self.project.jobs.get(int(job.id))
+        logging.debug("Inspecting artifact archive for job %s (%s).", job.id, job.name)
+
+        try:
+            artifact_bytes = job.artifacts()
+        except gitlab.exceptions.GitlabGetError as exc:
+            logging.info(f"Unable to download artifacts for job {job.id} ({job.name}): {exc}")
+            return []
+
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(artifact_bytes))
+        except zipfile.BadZipFile:
+            logging.info(f"Artifacts for job {job.id} ({job.name}) are not a ZIP archive.")
+            return []
+
+        with archive:
+            archive_members = [member for member in archive.infolist() if not member.is_dir()]
+            logging.debug(
+                "Job %s (%s) artifact archive contains %d file(s).",
+                job.id,
+                job.name,
+                len(archive_members),
+            )
+            if archive_members:
+                logging.debug(
+                    "First artifact paths for job %s: %s",
+                    job.id,
+                    ", ".join(member.filename for member in archive_members[:10]),
+                )
+            matching_members = [
+                member for member in archive_members
+                if self._artifact_matches_filter(member.filename, artifact_filter)
+            ]
+
+            if not matching_members:
+                logging.debug(
+                    "No artifact files in job %s (%s) matched filter %s.",
+                    job.id,
+                    job.name,
+                    artifact_filter,
+                )
+                return []
+
+            job_output_dir = os.path.abspath(os.path.join(output_dir, self._safe_job_dir_name(job)))
+            logging.debug(
+                "Job %s (%s) has %d artifact file(s) matching filter %s.",
+                job.id,
+                job.name,
+                len(matching_members),
+                artifact_filter,
+            )
+            downloaded = []
+            for member in matching_members:
+                download_info = {
+                    "job_id": job.id,
+                    "job_name": job.name,
+                    "artifact_path": member.filename,
+                    "download_path": None,
+                    "job_url": getattr(job, "web_url", None),
+                }
+
+                if list_only:
+                    downloaded.append(download_info)
+                    logging.debug(
+                        "List-only mode: job %s (%s) would download %s.",
+                        job.id,
+                        job.name,
+                        member.filename,
+                    )
+                    continue
+
+                destination = self._safe_artifact_destination(job_output_dir, member.filename)
+                if destination is None:
+                    logging.warning(
+                        f"Skipping artifact with unsafe path {member.filename} from job {job.id} ({job.name})."
+                    )
+                    continue
+
+                utility.ensure_dir(destination)
+                with archive.open(member) as source, open(destination, "wb") as target:
+                    shutil.copyfileobj(source, target)
+
+                download_info["download_path"] = destination
+                downloaded.append(download_info)
+                logging.info(f"Downloaded {member.filename} from job {job.id} to {destination}")
+
+        return downloaded
+
+    def download_job_artifacts(self, artifact_filter, output_dir, job_id=None, started_after=None, started_before=None, job_name=None, list_only=False):
+        try:
+            if job_id:
+                jobs = [self.project.jobs.get(int(job_id))]
+                logging.info("Found explicit job %s to inspect for matching artifacts.", job_id)
+            else:
+                jobs = self.find_failed_jobs(started_after, started_before, job_name=job_name)
+        except ValueError:
+            logging.info(f"Invalid job id: {job_id}")
+            return []
+        except gitlab.exceptions.GitlabGetError as exc:
+            logging.info(f"Unable to find job {job_id}: {exc}")
+            return []
+
+        logging.info("Inspecting %d candidate job(s) for artifact matches.", len(jobs))
+        downloaded = []
+        for job in jobs:
+            downloaded.extend(
+                self._collect_matching_files_from_job(
+                    job,
+                    artifact_filter,
+                    output_dir,
+                    list_only=list_only,
+                )
+            )
+        logging.debug(
+            "Matched %d artifact file(s) across %d candidate job(s).",
+            len(downloaded),
+            len(jobs),
+        )
+        return downloaded
+
     def getBranchHeadCommitHash(self, name):
         """
         Get the commit SHA (hash) at the head of a branch.
@@ -454,7 +738,7 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, wip=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
@@ -476,7 +760,6 @@ class Repo:
          mr.update(title,
                    description=description,
                    reviewers=reviewers,
-                   non_approvers=non_approvers,
                    wip=wip,
                    add_labels=labels)
 
@@ -1039,6 +1322,124 @@ class PullRequest:
         path = f"{self.mergerequest.manager.path}/{self.mergerequest.encoded_id}/diffs"
         return self.gitlab.http_list(path, get_all=True)
 
+    def unresolved_threads(self, ignored_commenters=None):
+        """
+        Return printable notes from unresolved merge request discussions.
+
+        Parameters
+        ----------
+        ignored_commenters : Iterable[str] | None, optional
+            Comment author names/usernames to exclude from the returned notes.
+            Matching is case-insensitive. System notes are always excluded.
+
+        Returns
+        -------
+        list[dict]
+            Each item contains:
+              - id: discussion id
+              - path: file path for diff discussions, or None
+              - line: line number for diff discussions, or None
+              - notes: list of note dictionaries with author, created_at, and body
+        """
+        ignored_commenters = {
+            commenter.lower() for commenter in (ignored_commenters or set()) if commenter
+        }
+        unresolved_threads = []
+        discussions = list(self.mergerequest.discussions.list(get_all=True))
+        merge_request_label = self.link()
+
+        logging.debug(
+            f'Inspecting {len(discussions)} merge request discussion(s) for {merge_request_label}'
+        )
+
+        for discussion in discussions:
+            # `discussion.asdict()` exposes the `notes`, `resolved`, and
+            # `resolvable` fields returned by GitLab's discussions API:
+            # https://docs.gitlab.com/api/discussions/#list-project-merge-request-discussion-items
+            discussion_data = discussion.asdict()
+            discussion_id = discussion_data.get('id')
+            discussion_resolved = discussion_data.get('resolved', True)
+            resolvable = discussion_data.get('resolvable')
+            discussion_notes = discussion_data.get('notes', [])
+            discussion_has_unresolved_note = False
+
+            logging.debug(
+                f'  Discussion {discussion_id}: resolved={discussion_resolved}, '
+                f'resolvable={resolvable}, notes={len(discussion_notes)}'
+            )
+
+            path = None
+            line = None
+            notes = []
+
+            for note in discussion_notes:
+                body = (note.get('body') or '').strip()
+                is_system = note.get('system')
+                note_resolved = note.get('resolved')
+                note_resolvable = note.get('resolvable')
+                body_preview = _truncate_preview(body)
+
+                logging.debug(
+                    f'    Note in discussion {discussion_id}: system={is_system}, '
+                    f'body_empty={not body}, '
+                    f'resolved={note_resolved}, '
+                    f'resolvable={note_resolvable}, '
+                    f'preview={body_preview or "<empty>"}'
+                )
+
+                if not is_system and note_resolvable and note_resolved is False:
+                    discussion_has_unresolved_note = True
+
+                if note.get('system'):
+                    continue
+
+                position = note.get('position') or {}
+
+                if path is None:
+                    path = position.get('new_path') or position.get('old_path')
+
+                if line is None:
+                    line = position.get('new_line') or position.get('old_line')
+
+                if not body:
+                    continue
+
+                author = note.get('author') or {}
+                author_name = author.get('username') or author.get('name') or 'unknown'
+
+                if author_name.lower() in ignored_commenters:
+                    logging.debug(
+                        f'    Note in discussion {discussion_id}: filtered out for ignored commenter {author_name}'
+                    )
+                    continue
+
+                notes.append({
+                    'author': author_name,
+                    'created_at': note.get('created_at'),
+                    'body': body
+                })
+
+            discussion_is_unresolved = (not discussion_resolved) or discussion_has_unresolved_note
+
+            if discussion_resolved and discussion_has_unresolved_note:
+                logging.debug(
+                    f'  Discussion {discussion_id} is marked resolved at the discussion level, '
+                    f'but has at least one unresolved resolvable note. Treating it as unresolved.'
+                )
+
+            if discussion_is_unresolved and notes:
+                unresolved_threads.append({
+                    'id': discussion_data.get('id'),
+                    'path': path,
+                    'line': line,
+                    'notes': notes
+                })
+
+        logging.debug(
+            f'Collected {len(unresolved_threads)} unresolved discussion thread(s) with printable comments for {merge_request_label}'
+        )
+        return unresolved_threads
+
     @staticmethod
     def get_title_for_wip_state(title, wip):
         if not hasattr(PullRequest.get_title_for_wip_state, "regexp"):
@@ -1055,8 +1456,29 @@ class PullRequest:
 
         return new_title
 
-    # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
+    # reviewers is a list of usernames.
+    def update(self, ver, title=None, description=None, reviewers=None, wip=None, add_labels=[], remove_labels=[]):
+        """Update merge request metadata and reviewer assignments.
+
+        Args:
+            ver: Unused compatibility parameter for the shared pull request
+                adapter interface.
+            title: New merge request title. If omitted, the current title is
+                preserved except for draft-state updates.
+            description: New merge request description. If omitted, the
+                existing description is preserved.
+            reviewers: List of GitLab usernames to assign as merge request
+                reviewers. ``None`` leaves reviewers unchanged, while an empty
+                list clears reviewers.
+            wip: Optional draft-state override. ``True`` marks the merge
+                request as draft, ``False`` marks it ready, and ``None`` leaves
+                draft state unchanged.
+            add_labels: Labels to add to the merge request.
+            remove_labels: Labels to remove from the merge request.
+
+        Returns:
+            PullRequest: This updated pull request wrapper.
+        """
         if title is None:
             title = self.mergerequest.title
 
@@ -1065,88 +1487,21 @@ class PullRequest:
         if description:
             self.mergerequest.description = description
 
-        if reviewers:
-            all_reviewer_ids = set()
+        if reviewers is not None:
+            gitlab_reviewer_ids = set()
 
-            for review_rule_name in reviewers:
-                reviewer_group = reviewers[review_rule_name]
-                approval_rule_name = reviewer_group['label']
-                users = reviewer_group['reviewers']
-                num_required = len(users)
+            for r in reviewers:
+                matching_reviewers = self.gitlab.users.list(all=True, username=r)
 
-                approval_rules = self.mergerequest.approval_rules.list()
-
-                # Find the approval rule by name
-                matching_rule = None
-
-                for rule in approval_rules:
-                    if rule.name == approval_rule_name:
-                        matching_rule = rule
-                        break
-
-                # Merge request approvals created by others can only be changed by maintainer and above,
-                # so only update them if they are changed and just warn if they cannot be updated.
-
-                if users:
-                    rule_reviewer_ids = []
-                    rule_reviewer_usernames = []
-
-                    for r in users:
-                        matching_reviewers = self.gitlab.users.list(all=True, username=r)
-
-                        if matching_reviewers:
-                           gitlab_reviewer = matching_reviewers[0]
-                        else:
-                           logging.info(f"Could not find reviewer {r}.")
-                           raise SystemExit("Abort")
-
-                        if non_approvers and r in non_approvers:
-                            logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
-                            num_required -= 1
-                            all_reviewer_ids.add(gitlab_reviewer.id)
-                        else:
-                            rule_reviewer_ids.append(gitlab_reviewer.id)
-                            rule_reviewer_usernames.append(r)
-
-                    update = True
-
-                    if matching_rule is not None:
-                        eligible_approver_ids = set()
-
-                        for approver in matching_rule.eligible_approvers:
-                            eligible_approver_ids.add(approver["id"]) 
-
-                        if eligible_approver_ids == set(rule_reviewer_ids) and matching_rule.approvals_required == num_required:
-                            logging.info(f'Approval rule "{approval_rule_name}" unchanged.')
-                            update = False 
-
-                    if not rule_reviewer_ids and num_required == 0:
-                        logging.info(
-                            f'Approval rule "{approval_rule_name}" has no approvers after filtering non-approvers. '
-                            'Skipping empty rule creation.'
-                        )
-                        update = False
-
-                    if update:
-                        try:
-                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=rule_reviewer_ids, approval_rule_name=approval_rule_name)
-                        except gitlab.exceptions.GitlabCreateError as e:
-                            logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}" requiring {num_required} approvals from the set of reviewers {rule_reviewer_usernames} (ids: {rule_reviewer_ids}): {e}')
-                        except gitlab.exceptions.GitlabUpdateError as e:
-                            logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}" requiring {num_required} approvals from the set of reviewers {rule_reviewer_usernames} (ids: {rule_reviewer_ids}): {e}')
-
-                    for reviewer_id in rule_reviewer_ids:
-                        all_reviewer_ids.add(reviewer_id)
+                if matching_reviewers:
+                    gitlab_reviewer = matching_reviewers[0]
                 else:
-                    if matching_rule is not None:
-                        try:
-                            # Delete the approval rule
-                            self.mergerequest.approval_rules.delete(matching_rule.id)
-                            logging.info(f'Deleted approval rule "{approval_rule_name}".')
-                        except gitlab.exceptions.GitlabDeleteError as e:
-                            logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')
+                    logging.info(f"Could not find reviewer {r}.")
+                    raise SystemExit("Abort")
 
-            self.mergerequest.reviewer_ids = list(all_reviewer_ids)
+                gitlab_reviewer_ids.add(gitlab_reviewer.id)
+
+            self.mergerequest.reviewer_ids = list(gitlab_reviewer_ids)
 
         if self.mergerequest.description:
             self.mergerequest.description = re.sub(r"([^\n])\n([^\n])", r"\1\n\n\2", self.mergerequest.description)
@@ -1197,9 +1552,10 @@ class PullRequest:
                f"Reviewers: {all_reviewers}\n" + \
                f"Description: {self.description()}\n"
 
-    def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
+    def merge(self, merge_commit_message=None, should_remove_source_branch=False, merge_when_pipeline_succeeds=False):
         try:
-            self.mergerequest.merge(merge_commit_message=merge_commit_message, should_remove_source_branch=False,
+            self.mergerequest.merge(merge_commit_message=merge_commit_message,
+                                    should_remove_source_branch=should_remove_source_branch,
                                     merge_when_pipeline_succeeds=merge_when_pipeline_succeeds)
             return True
         except gitlab.exceptions.GitlabMRClosedError as e:
@@ -1240,4 +1596,3 @@ def testMe():
 
 if __name__ == "__main__":
     testMe()
-

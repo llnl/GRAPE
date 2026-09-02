@@ -2,10 +2,43 @@ __author__ = 'robinson96'
 import os
 import tempfile
 from unittest.mock import patch
+import pytest
 from test import testGrape
 from vine import checkout
 from vine import grape_errors
 from vine import grapeGit as git
+
+
+pytestmark = pytest.mark.slow
+
+
+@patch("vine.checkout.logging.warning")
+@patch("vine.checkout.git.checkout")
+@patch("vine.checkout.git.fetch")
+def test_handled_checkout_sync_warns_and_continues_on_fetch_index_lock(
+        mock_fetch, mock_checkout, mock_warning):
+    error = grape_errors.GrapeGitIndexLockError(
+        gitOutput="Unable to create '/tmp/repo/.git/index.lock': File exists.",
+        cwd="/tmp/repo",
+        indexLockPath="/tmp/repo/.git/index.lock",
+    )
+    mock_fetch.side_effect = error
+    args = {
+        "checkout": "",
+        "sync": True,
+        "quiet": False,
+        "verbose": False,
+    }
+
+    assert checkout.handledCheckout(
+        repo="/tmp/repo",
+        branch="develop",
+        args=args,
+        workspace_dir="/tmp/workspace",
+    ) is True
+
+    mock_warning.assert_called_once()
+    mock_checkout.assert_called_once_with(" develop", execution_path="/tmp/repo")
 
 
 class TestCheckout(testGrape.TestGrape):

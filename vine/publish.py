@@ -17,6 +17,7 @@ from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
+from vine import Gitlab
 from vine import grapeMenu
 from vine import review
 from vine import utility
@@ -29,6 +30,18 @@ from vine.resumable import Resumable
 from vine.ReviewRule import ReviewRuleManager
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
+
+# python-gitlab defines this as gitlab.exceptions.GitlabMRClosedError.
+# The Gitlab module imports python-gitlab opportunistically because Bitbucket
+# users may not have that optional dependency installed. Resolve the exception
+# through vine.Gitlab when it exists, and use a private fallback exception class
+# so this module can still import in Bitbucket-only environments.
+GitlabMRClosedError = getattr(getattr(Gitlab, "gitlab", None), "exceptions", None)
+GitlabMRClosedError = getattr(
+    GitlabMRClosedError,
+    "GitlabMRClosedError",
+    type("UnavailableGitlabMRClosedError", (Exception,), {}),
+)
 
 
 class PublishStepFailed(Exception):
@@ -66,11 +79,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
-                         [--user=<BitbucketUserName>]
+                         [--user=<CodeReviewUserName>]
                          [--codeReviewsURL=<httpsURL>]
                          [--verifySSL=<bool>]
-                         [--project=<BitbucketProjectKey>]
-                         [--repo=<BitbucketRepoName>]
+                         [--project=<CodeReviewProject>]
+                         [--repo=<CodeReviewRepo>]
                          [-R <arg>]...
                          [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                          [--useBitbucket=<bool>]
@@ -85,7 +98,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+            grape-publish --quick -m <msg> [--user=<CodeReviewUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
                                      --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
@@ -185,21 +198,21 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                   Default behavior governed by the flow.topicCascadeTick mapping.
         -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
                                   and defaults. -T can be used multiple times to pass multiple arguments.
-        --user=<user>             Your Bitbucket/Gitlab username.
-        --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+        --user=<user>             Your code review username.
+        --codeReviewsURL=<url>    Your GitLab or Bitbucket URL, e.g. https://your.home.org/gitlab .
                                   [default: .grapeconfig.project.codeReviewsURL]
         --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
                                   [default: .grapeconfig.project.verifySSL]
-        --project=<project>       Your Bitbucket Project. See grape-review for more details.
+        --project=<project>       Your GitLab group/namespace or Bitbucket project. See grape-review for more details.
                                   [default: .grapeconfig.project.name]
-        --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+        --repo=<repo>             Your GitLab project/repo or Bitbucket repo. See grape-review for more details.
                                   [default: .grapeconfig.repo.name]
         -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                                   Type grape review --help for valid options.
         --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
         --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
         --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
-        --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+        --useBitbucket=<bool>     Legacy name for whether or not to use code review pull/merge requests. [default: .grapeconfig.publish.useStash]
         --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                                   by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                                   if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -231,7 +244,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                   [default: .grapeconfig.publish.emailMaxFiles]
         --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                                   markInProgress, md2, publish, markAsDone, deleteTopic, done]
-        --remoteMerge             Perform the merge using the Bitbucket REST API.
+        --remoteMerge             Perform the merge using the code review provider REST API.
         --quiet                   Suppress output from custom build and test steps unless there is a failure.
         --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                   REST API.
@@ -312,7 +325,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
         # tick the version?
         config.set(self.SECTION_PUBLISH, 'tickVersion', 'False')
-        # use Bitbucket for checking Pull Request status?
+        # Historical config name. useStash now means "use a code review
+        # provider" for both Bitbucket pull requests and GitLab merge requests.
         config.set(self.SECTION_PUBLISH, 'useStash', 'True')
         # delete when done
         config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
@@ -372,17 +386,22 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             public = config.getPublicBranchFor(topic)
         args["--public"] = public
         self.branchPrefix = prefix
-        # whether or not to use Bitbucket
+        # Historical CLI name. --useBitbucket is wired to .grapeconfig.publish.useStash,
+        # but the switch gates all code review provider interactions, including
+        # GitLab merge requests. --noReview can override.
         if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
         if not args["--noReview"] and not isinstance(args["--verifySSL"], bool):
             verify = args["--verifySSL"].lower() == "true"
             args["--verifySSL"] = verify
-        # get the Bitbucket Username
+        # get the code review username
         user = args["--user"]
 
         if not user and not args["--noReview"] and not args["--printSteps"]:
-            args["--user"] = utility.getUserName(service="Bitbucket")
+            # getUserName infers GitLab or Bitbucket from --codeReviewsURL.
+            # Unknown providers use the generic LC service and default to
+            # $USER/$USERNAME when prompting or running non-interactively.
+            args["--user"] = utility.getUserName(args)
 
 
         if args["--tickVersion"] is not False and args["--tickVersion"] is not True:
@@ -797,13 +816,54 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
-    def verifyCompletedReview(self, args):
-        if args["--noReview"]:
-            logging.info("Skipping verification of code review...")
+    def _storeReviewMetadata(self, pullRequest=None, reviewerNames=None):
+        """Store review metadata in progress.
+
+        Args:
+            pullRequest: Pull request to use for author metadata. If
+                reviewerNames is not provided, reviewers are read from this
+                pull request too.
+            reviewerNames (list): Display names to store as reviewers.
+        """
+        if pullRequest and reviewerNames is None:
+            reviewerNames = [reviewer[2] for reviewer in pullRequest.reviewers()]
+
+        if reviewerNames:
+            self.progress["reviewers"] = ", ".join(reviewerNames)
+        else:
             self.progress["reviewers"] = "No reviewers"
+
+        if pullRequest:
+            self.progress["author"] = pullRequest.authorName()
+            self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
+        else:
             self.progress["author"] = ""
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
+
+    def loadReviewMetadata(self, args):
+        """Load top-level review metadata needed by logs and notifications.
+
+        This intentionally avoids approval, review-rule, and tag validation.
+        Those checks are performed by the explicit verifyCompletedReview publish
+        step.
+
+        Args:
+            args (dict): Parsed publish arguments.
+
+        Returns:
+            bool: True when metadata has been loaded or defaulted.
+        """
+        if args["--noReview"]:
+            self._storeReviewMetadata()
+        else:
+            self._storeReviewMetadata(self.openPullRequest())
+
+    def verifyCompletedReview(self, args):
+        if args["--noReview"]:
+            logging.info("Skipping verification of code review...")
+            self._storeReviewMetadata()
             return True
 
         # Get review rules
@@ -883,7 +943,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
 
             # Omit non-approvers from the unfinished reviewers reported
-            non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
+            config = config_parser_global.grapeConfig()
+            non_approvers = ""
+            if config.has_option(self.SECTION_REVIEW, "non_approvers"):
+                non_approvers = config.get(self.SECTION_REVIEW, "non_approvers")
 
             non_approver_list = set()
             if non_approvers:
@@ -902,26 +965,27 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         label = reviewRule.label
                         minNumReviewers = reviewRule.minNumReviewers
 
-                        # Check if reviewers are assigned to the review rule
-                        if label not in descriptionModel.reviewRules:
-                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        if minNumReviewers > 0:
+                            # Check if reviewers are assigned to the review rule
+                            if label not in descriptionModel.reviewRules:
+                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
-                            if not ruleDryRun:
-                                verified = False
+                                if not ruleDryRun:
+                                    verified = False
 
-                            break
+                                break
 
-                        # Check if at least the minimum number of required
-                        # reviewers are assigned to the review rule
-                        assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
+                            # Check if at least the minimum number of required
+                            # reviewers are assigned to the review rule
+                            assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
 
-                        if len(assignedReviewers) < minNumReviewers:
-                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                            if len(assignedReviewers) < minNumReviewers:
+                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
-                            if not ruleDryRun:
-                                verified = False
+                                if not ruleDryRun:
+                                    verified = False
 
-                            break
+                                break
 
                         # Check that the assigned reviewers are eligible
                         # for this review rule.
@@ -1112,19 +1176,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         # TODO: Consider reporting review rule groupings in self.progress
 
-        if topPullRequest:
-            self.progress["author"] = pullRequest.authorName()
-            self.progress["author_username"] = pullRequest.author()
-            self.progress["author_email"] = pullRequest.authorEmail()
-        else:
-            self.progress["author"] = ""
-            self.progress["author_username"] = ""
-            self.progress["author_email"] = ""
-
-        if len(finishedReviewers) > 0:
-            self.progress["reviewers"] = ", ".join(finishedReviewers)
-        else:
-            self.progress["reviewers"] = "No reviewers"
+        self._storeReviewMetadata(topPullRequest, reviewerNames=list(finishedReviewers))
 
         if userMessage:
             logging.info(f"Code reviews are not completed in the following repo(s):{userMessage}")
@@ -1451,7 +1503,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return self.loadCommitMessageFromRecentMergeRequest(args)
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
-            self.verifyCompletedReview(args)
+            self.loadReviewMetadata(args)
         if "commitMsg" in self.progress:
             if not args["-m"]:
                 args["-m"] = self.progress["commitMsg"]
@@ -1905,7 +1957,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return valid
 
     def remoteMerge(self, public, topic, subproject_name, args, isSubmodule, isNested):
-        codeReviews = self.codeReviews(args)
+        codeReviews = self.codeReviews
         if isNested:
             remoteRepo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, subproject_name)
         elif isSubmodule:
@@ -1916,8 +1968,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
             logging.info(f"remotely merging {topic} into {public}")
-            if pr.merge():
-                git.checkout(execution_path=public)
+            if pr.merge(merge_commit_message=args["-m"],
+                        should_remove_source_branch=str(args["--deleteTopic"]).lower() == "true",
+                        merge_when_pipeline_succeeds=False):
+                git.checkout(public, execution_path=self.workspace_dir)
                 git.pull("", execution_path=self.workspace_dir)
                 logging.info(f"{topic} merged successfully to {public}")
                 logging.info(f"You are currently on {public}")
@@ -1990,6 +2044,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           f"{public} to {branch} after publish.\"",
                           execution_path=self.workspace_dir)
                 status[mergeID] = "MERGED"
+            except grape_errors.GrapeGitIndexLockError as e:
+                e.LogError(f"cascade merge from {public} to {branch} in {repo}")
+                return False
             except grape_errors.GrapeGitError as e:
                 if e.has_conflict():
                     logging.error(
@@ -2071,10 +2128,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         return
                     else:
                         logging.error(
-                            f"Bitbucket seems to think {topic} in {repo} " +
+                            f"The code review provider seems to think {topic} in {repo} " +
                             "is not mergeable... aborting")
                         raise Exception
-                except stashyErrors.GenericException as e:
+                except (stashyErrors.GenericException, GitlabMRClosedError) as e:
                     logging.warning("WARNING: Remote merge failed. Attempting local merge instead.")
                     self.merge(public, topic, repo, args)
             else:
@@ -2087,6 +2144,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if not args["--nopush"]:
             try:
                 git.push("-u origin HEAD", throwOnFail=True, execution_path=repo)
+            except grape_errors.GrapeGitIndexLockError as e:
+                e.LogError(f"publish push to origin in {repo}")
+                raise e
             except grape_errors.GrapeGitError as e:
                 if e.commError:
                     logging.error("Unable to push result of publish to origin due to connectivity issue.")

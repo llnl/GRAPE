@@ -101,8 +101,8 @@ class UpdateLocal(Option, WorkspaceDirHandler):
         pass
 
 def fetchLocalHandler(mre):
-    for e in mre.exceptions():
-        logging.error(repr(e.gitOutput))
+    for  e,r in zip(mre.exceptions(), mre.repos()):
+        logging.error(repr(e.gitOutput), r)
     raise mre
 
 def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
@@ -141,6 +141,9 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
         git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=(not args["--ignoreCommError"]))
+    except grape_errors.GrapeGitIndexLockError as e:
+        e.LogError(f"fetch in {execution_path}")
+        raise e
     except grape_errors.GrapeGitError as e:
         # let non-fast-forward fetches slide
         if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
@@ -158,6 +161,9 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
         try:
             logging.debug( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
+        except grape_errors.GrapeGitIndexLockError as e:
+            e.LogError(f"merge origin/{currentBranch} into {currentBranch}")
+            raise e
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
             raise e

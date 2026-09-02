@@ -3,11 +3,34 @@ import os
 import shutil
 from test import testGrape
 from unittest.mock import patch
+from vine import bundle
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 
 
 class TestUnbundle(testGrape.TestGrape):
+
+    @patch("vine.bundle.bundlecmdMRE")
+    @patch("vine.bundle.multi_repo_cmd_launcher.MultiRepoCommandLauncher")
+    def testUnbundleReturnsFalseOnMultiRepoException(
+            self, mock_launcher_cls, mock_bundlecmdMRE):
+        option = bundle.Unbundle()
+        option.workspace_dir = self.repo
+
+        mre = grape_errors.MultiRepoException(workspace_dir=self.repo)
+        mock_launcher = mock_launcher_cls.return_value
+        mock_launcher.launchFromWorkspaceDir.side_effect = mre
+
+        result = option.execute({
+            "--noRecurse": False,
+            "--branchMappings": "master:master",
+            "--submoduleBranchMappings": "master:master",
+        })
+
+        self.assertFalse(result)
+        mock_bundlecmdMRE.assert_called_once_with(mre)
+        mock_launcher_cls.assert_called_once()
 
     @patch('vine.utility.userInput')
     def testUnbundleWithSubproject(self, mock_userInput):
