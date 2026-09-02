@@ -462,8 +462,8 @@ grape bundle uses the 'git bundle' feature to extract a subset of history into a
 which can then be sent over a sneakernet to a mirror of your grape project.
 The history range that is extracted is defined in the following way:
     start point:
-        for each branch in <list> as defined by --branches, start at the commit tagged by
-        <tagprefix>/<branch>.
+        if --tag is provided, start at that tag. Otherwise, for each branch in <list> as
+        defined by --branches, start at the commit tagged by <tagprefix>/<public branch>.
     end point:
         the tip of each branch in <list> as defined by --branches.
 By default, grape bundle bundles up all active submodules in your repository, according to their
@@ -473,6 +473,7 @@ respective .grapeconfig files.
 Usage:
    grape-bundle [--noRecurse] [--branches=<config.patch.branches>]
                 [--tagprefix=<config.patch.tagprefix>]
+                [--tag=<tag>]
                 [--describePattern=<config.patch.describePattern>]
                 [--name=<config.repo.name>]
                 [--outfile=<fname>]
@@ -486,6 +487,8 @@ Options:
                                     [default: .grapeconfig.patch.branches]
    --tagprefix=<str>                the prefix used to tag start points to bundle
                                     [default: .grapeconfig.patch.tagprefix]
+   --tag=<tag>                      an exact tag to use as the start point for every branch.
+                                    Overrides --tagprefix.
    --describePattern=<pattern>      passed to git describe to aid in naming the bundle.
                                     [default: .grapeconfig.patch.describePattern]
    --name=<str>                     Name used as a prefix to the bundle file.
@@ -498,8 +501,9 @@ Options:
    --bundleTags=<mapping>           A list of branch:tagPattern tags to bundle. Note that a broadly defined tag
                                     pattern may yield larger bundle files than you might expect.
                                     [default: .grapeconfig.patch.branchToTagPatternMapping]
-   --submoduleBranches=<list>       space delimited list of submodule branches to bundle.
-                                    [default: .grapeconfig.patch.submodulebranches]
+   --submoduleBranches=<list>       Space-delimited list of submodule branches to bundle.
+                                    Defaults to topic branches from --branches when present,
+                                    otherwise .grapeconfig.patch.submodulebranches.
 
 
 .grapeConfig Defaults:
