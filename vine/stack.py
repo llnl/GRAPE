@@ -1,8 +1,37 @@
 """Local stacked-branch model and command implementation.
 
-A stack manifest is workspace-local state stored below ``.git/grape/stacks``.
-It deliberately does not change the meaning of configured public branches.
-Commands that need the immediate parent use :class:`IntegrationTargetResolver`.
+Design:
+    A stack is an ordered collection of logical levels, and each level is
+    represented by a branch with the same logical name in each participating
+    workspace repository.  :class:`StackManifest` is the local source of
+    truth for the stack identity, publication destination, and level order.
+    :class:`StackLevel` records a logical change, while
+    :class:`StackRepository` records the physical branch, target, and known
+    tips for one repository.
+
+    :class:`WorkspaceInventory` discovers the outer repository, active
+    submodules, and active nested projects.  Stack creation validates and
+    updates those repositories as one workspace operation.
+    :class:`IntegrationTargetResolver` separates a level's immediate parent
+    from its ultimate public destination: the bottom level integrates into
+    the configured destination, and an upper level integrates into the
+    nearest lower level available in that repository.
+
+Persistence:
+    :class:`StackStore` persists versioned JSON manifests under
+    ``.git/grape/stacks`` and uses an active-stack pointer plus an exclusive
+    lock.  The manifest is intentionally outside the project working tree so
+    stack bookkeeping does not become a project commit.  Branch names and
+    GitLab or Bitbucket reviews remain external state; the manifest records
+    the local relationship between them rather than replacing either system.
+
+Commands:
+    :class:`StackOption` owns the user-facing lifecycle.  ``stack start``
+    creates the bottom level from the configured start point, while
+    ``stack add`` creates the next level from the current stack top.  Both
+    commands use the same branch and workspace-repository rules and print a
+    plan before mutating state.  Later stack commands should use the manifest
+    and target resolver rather than inferring stack order from branch names.
 """
 
 from contextlib import contextmanager
@@ -519,6 +548,27 @@ class StackOption(Option, WorkspaceDirHandler):
         return recurse
 
     def _start(self, args):
+        """Create the bottom level of a new stack.
+
+        The bottom level starts from ``--start`` or the configured topic
+        prefix mapping and publishes to ``--target`` or the configured public
+        destination.  These values are resolved independently for each
+        participating submodule, because submodules may map the logical
+        branches to different physical branch names.  The new branch is
+        created in every selected repository, optionally pushed, and then
+        recorded in one manifest while the store lock is held.
+
+        Args:
+            args (dict): Parsed ``grape stack start`` arguments.
+
+        Returns:
+            bool: ``True`` after the stack level and manifest are created, or
+                after a dry-run plan is printed.
+
+        Raises:
+            StackError: If configuration, branch ancestry, repository
+                topology, or existing stack state is invalid.
+        """
         config = config_parser_global.grapeConfig()
         if not config.getboolean(self.SECTION_STACK, "enabled", fallback=True):
             raise StackError("Stack support is disabled by [stack].enabled.")
@@ -590,6 +640,27 @@ class StackOption(Option, WorkspaceDirHandler):
         return True
 
     def _add(self, args):
+        """Create the next level above the current stack top.
+
+        A new level must be created while the workspace is checked out at the
+        recorded top branch in every participating repository.  Unlike
+        ``_start``, its parent is always the current top level rather than a
+        configured public branch.  The parent tips are refreshed before the
+        child is created so later stack operations can detect movement that
+        happened after the parent was initially recorded.
+
+        Args:
+            args (dict): Parsed ``grape stack add`` arguments.
+
+        Returns:
+            bool: ``True`` after the child level and manifest are created, or
+                after a dry-run plan is printed.
+
+        Raises:
+            StackError: If no stack is active, the workspace is not at its
+                top, repositories disagree about their branch, or the new
+                level cannot be created safely.
+        """
         config = config_parser_global.grapeConfig()
         store = StackStore(self.workspace_dir)
         current = git.currentBranch(execution_path=self.workspace_dir)
