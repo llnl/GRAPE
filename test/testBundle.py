@@ -63,8 +63,8 @@ class TestBundle(testGrape.TestGrape):
         self.assertEqual("explicit-start", launch_args["tag"])
         self.assertEqual({}, launch_args["branchToPublicBranchMap"])
 
-    def test_bundlecmd_uses_explicit_or_public_branch_tag(self):
-        """Test selection of exact and topic-default start tags."""
+    def test_bundlecmd_uses_explicit_tag_or_topic_common_ancestor(self):
+        """Test selection of exact and topic common-ancestor start points."""
         branch = "feature/user/example"
         cases = (
             (None, "patched/develop"),
@@ -90,6 +90,7 @@ class TestBundle(testGrape.TestGrape):
                 with patch.object(bundle.git, "allBranches", return_value=[remote_ref]), \
                      patch.object(bundle.git, "safeForceBranchToOriginRef", return_value=True), \
                      patch.object(bundle.git, "describe", side_effect=["old", "new"]), \
+                     patch.object(bundle.git, "mergeBase", return_value="common-ancestor"), \
                      patch.object(bundle.git, "shortSHA", return_value="1234567"), \
                      patch.object(bundle.git, "bundle") as create_bundle:
                     result = bundle.bundlecmd(
@@ -100,7 +101,41 @@ class TestBundle(testGrape.TestGrape):
 
                 self.assertTrue(result)
                 bundle_args = create_bundle.call_args[0][0]
-                self.assertIn(f"{expected_tag}..{branch}", bundle_args)
+                expected_start = (
+                    "common-ancestor" if explicit_tag is None else expected_tag
+                )
+                self.assertIn(f"{expected_start}..{branch}", bundle_args)
+
+    def test_bundlecmd_uses_public_tag_for_public_branches(self):
+        """Public branches should continue to use the tag as the range start."""
+        branch = "develop"
+        args = {
+            "branchList": [branch],
+            "tags": {branch: "v*"},
+            "prefix": "patched",
+            "tag": None,
+            "branchToPublicBranchMap": {branch: branch},
+            "describePattern": "v*",
+            "submoduleReverseBranchMap": None,
+            "nestedSubprojectBranchToTagMap": None,
+            "--outfile": "test.bundle",
+        }
+        remote_ref = f"remotes/origin/{branch}"
+        with patch.object(bundle.git, "allBranches", return_value=[remote_ref]), \
+             patch.object(bundle.git, "safeForceBranchToOriginRef", return_value=True), \
+             patch.object(bundle.git, "describe", side_effect=["old", "new"]), \
+             patch.object(bundle.git, "shortSHA", return_value="1234567"), \
+             patch.object(bundle.git, "mergeBase") as merge_base, \
+             patch.object(bundle.git, "bundle") as create_bundle:
+            result = bundle.bundlecmd(
+                repo=self.repo,
+                args=args,
+                workspace_dir=self.repo,
+            )
+
+        self.assertTrue(result)
+        self.assertIn("patched/develop..develop", create_bundle.call_args[0][0])
+        merge_base.assert_not_called()
 
     @patch("vine.bundle.config_parser_workspace.GrapeConfigParserWorkspace")
     @patch("vine.bundle.multi_repo_cmd_launcher.MultiRepoCommandLauncher")
