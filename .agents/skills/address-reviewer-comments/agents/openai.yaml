@@ -1,4 +1,4 @@
 interface:
   display_name: "Address Reviewer Comments"
-  short_description: "Fetch and address unresolved MR comments"
-  default_prompt: "Use $address-reviewer-comments to fetch unresolved grape review comments, fix trivial issues, and summarize how the comments were addressed."
+  short_description: "Address unresolved MR comments across stacks"
+  default_prompt: "Use $address-reviewer-comments to fetch unresolved GRAPE review comments across the current stack, fix trivial issues, and summarize how the comments were addressed."
