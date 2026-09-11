@@ -15,6 +15,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import vine_logging
+from vine.workspace_dir_handler import WorkspaceDirHandler
 
 
 #A grape project in a command list form that has reset capability.
@@ -109,10 +110,22 @@ class ResettableProject:
                     if isinstance(cmd, types.BuiltinFunctionType):
                         cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
                         continue
-                    if cmd == self.apply_menu_choice:
+                    # Always route scenario menu commands through this
+                    # project's menu. Scenario definitions retain bound menu
+                    # methods while several singleton menus are constructed
+                    # during collection.
+                    if getattr(cmd, "__name__", None) == "applyMenuChoice":
                         execution_path = self.getProjectDir()
                         self.menu.set_workspace_dir(execution_path)
-                        cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
+                        # Menu options are constructed before the scenario's
+                        # repository exists. Their workspace setter therefore
+                        # may retain the process cwd from construction time.
+                        # Pin every workspace-aware option once the scenario
+                        # repository has been created.
+                        for option in self.menu._options:
+                            if isinstance(option, WorkspaceDirHandler):
+                                option._workspace_dir = execution_path
+                        self.menu.applyMenuChoice(*param)
                         continue
 
                     execution_path = self.get_execution_path(param)

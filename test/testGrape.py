@@ -22,6 +22,11 @@ grape_par_dir = os.path.dirname(grape_path)
 if grape_par_dir not in sys.path:
     sys.path.insert(0, grape_par_dir)
 
+# Some GRAPE commands intentionally change the process working directory.
+# Keep a stable location that the shared test harness can restore after every
+# test, before deleting any temporary workspace that may contain the cwd.
+_TEST_PROCESS_WORKING_DIRECTORY = grape_path
+
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import config_parser_global
@@ -51,6 +56,12 @@ def writeFile3(path):
         f.write(str3)
 
 
+def writeGrapeConfig(path):
+    """Create the marker identifying ``path`` as a GRAPE workspace."""
+    with open(os.path.join(path, '.grapeconfig'), 'w') as f:
+        f.write('[workspace]\n')
+
+
 def _ensure_bootstrap_template():
     global _BOOTSTRAP_TEMPLATE
     if _BOOTSTRAP_TEMPLATE is not None:
@@ -70,7 +81,8 @@ def _ensure_bootstrap_template():
 
     fname = os.path.join(template_repo, "testRepoFile")
     writeFile1(fname)
-    git.add(fname, execution_path=template_repo)
+    writeGrapeConfig(template_repo)
+    git.add(f"{fname} .grapeconfig", execution_path=template_repo)
     git.commit("-m \"initial commit\"", execution_path=template_repo)
     git.gitcmd("push origin master", "push to master failed", execution_path=template_repo)
     git.branch("develop", execution_path=template_repo)
@@ -168,6 +180,8 @@ class TestGrape(unittest.TestCase):
                 func(path)
             else:
                 raise Exception
+
+        os.chdir(_TEST_PROCESS_WORKING_DIRECTORY)
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
         # reset grapeConfig and grapeMenu
@@ -242,6 +256,19 @@ class TestGrape(unittest.TestCase):
         testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=subproject1path),
                                    "subproject1 not clean")
         testGrapeObject.subproject = subproject1path
+
+
+def test_teardown_restores_cwd_before_removing_workspace():
+    """Test teardown does not leave the process in a deleted workspace."""
+    case = TestGrape("runTest")
+    workspace = case.defaultWorkingDirectory
+    case._debug = True
+
+    os.chdir(workspace)
+    case.tearDown()
+
+    assert os.getcwd() == _TEST_PROCESS_WORKING_DIRECTORY
+    assert not os.path.exists(workspace)
 
 def buildSuite(cls, appendTo, sub=None):
     suite = appendTo
