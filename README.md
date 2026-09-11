@@ -463,7 +463,9 @@ which can then be sent over a sneakernet to a mirror of your grape project.
 The history range that is extracted is defined in the following way:
     start point:
         if --tag is provided, start at that tag. Otherwise, for each branch in <list> as
-        defined by --branches, start at the commit tagged by <tagprefix>/<public branch>.
+        defined by --branches, start at the common ancestor of the commit tagged by
+        <tagprefix>/<public branch> and the branch when bundling a topic branch;
+        public branches start at the tagged commit.
     end point:
         the tip of each branch in <list> as defined by --branches.
 By default, grape bundle bundles up all active submodules in your repository, according to their
