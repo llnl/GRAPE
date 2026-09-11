@@ -33,6 +33,18 @@ class MergeDownTestBase(testGrape.TestGrape):
             execution_path=execution_path,
         )
         git.submodule(f"add {self.repos[1]} submodule1", execution_path=self.repo)
+        # The bootstrap repository is a GRAPE workspace, but this repository
+        # is being used as a submodule.  Keep the submodule unconfigured so
+        # workspace discovery continues to resolve commands to the outer
+        # project.  Push the change because later merge-down setup fetches
+        # public branches from the submodule's origin.
+        submodule_path = os.path.join(self.repo, "submodule1")
+        git.rm(".grapeconfig", execution_path=submodule_path)
+        git.commit(
+            "-m \"removed workspace config from submodule\"",
+            execution_path=submodule_path,
+        )
+        git.push("origin master", execution_path=submodule_path)
         git.commit("-m \"added submodule1\"", execution_path=self.repo)
 
     def setUpNonConflictingSubmoduleMerge(self):
