@@ -105,10 +105,13 @@ def startup():
                 print("--gc arguments should be in the form <name>=<value>")
                 return False
     try:
-        from typing_extensions import Protocol 
-    except ModuleNotFoundError:
+        if sys.version_info < (3, 8):
+            from typing_extensions import Protocol
+        else:
+            from typing import Protocol
+    except ImportError:
         print("GRAPE: WARNING: GitLab REST API functions not available.")
-        print("GRAPE: WARNING: You may need python 3.8+ and/or the typing_extensions module installed.") 
+        print("GRAPE: WARNING: You may need Python 3.8+ and/or the typing_extensions module installed.")
 
     retval = True
     try:
