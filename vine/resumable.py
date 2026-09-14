@@ -3,7 +3,6 @@ import io
 import logging
 import os
 import pickle
-from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 
@@ -33,12 +32,18 @@ class Resumable(ABC):
             self.progress = {}
 
     def dumpProgress(self, args, msg=""):
+        """Save enough state to resume a command after a conflict.
+
+        Configuration is deliberately not saved.  ``ConfigParser`` instances
+        are not portable across Python versions, and the current invocation
+        has already loaded the workspace configuration before it reaches a
+        resumable command.
+        """
         if msg:
             logging.info(msg)
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
-        self.progress["config"] = config_parser_global.grapeConfig()
         with io.open(self.progressFile, 'wb') as f:
             p = pickle.Pickler(f)
             p.dump(self.progress)
@@ -81,7 +86,5 @@ class Resumable(ABC):
         #overwrite args with the loaded args
         for key in newArgs.keys():
             args[key] = newArgs[key]
-        #load the config
-        config_parser_global.resetGrapeConfig(self.progress["config"])
         if deleteProgressFile:
             self._removeProgressFile()

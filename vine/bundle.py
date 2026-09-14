@@ -21,7 +21,9 @@ class Bundle(Option, WorkspaceDirHandler):
     The history range that is extracted is defined in the following way:
         start point:
             if --tag is provided, start at that tag. Otherwise, for each branch in <list> as
-            defined by --branches, start at the commit tagged by <tagprefix>/<public branch>.
+            defined by --branches, start at the common ancestor of the commit tagged by
+            <tagprefix>/<public branch> and the branch when bundling a topic branch;
+            public branches start at the tagged commit.
         end point:
             the tip of each branch in <list> as defined by --branches.
     By default, grape bundle bundles up all active submodules in your repository, according to their
@@ -307,7 +309,16 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                                          + " Not checking for nested subproject consistency.")
             try:
                 git.shortSHA(tagname, execution_path=execution_path)
-                revlists = f" {tagname}..{branch}"
+                if not tag and publicBranch != branch:
+                    # A topic branch may contain commits made before the public
+                    # branch was tagged.  Starting at the tag would exclude
+                    # those commits, so use the common ancestor as the start
+                    # of the bundle range instead.
+                    mergeBase = git.mergeBase(
+                        f"{tagname} {branch}", execution_path=execution_path)
+                    revlists = f" {mergeBase}..{branch}"
+                else:
+                    revlists = f" {tagname}..{branch}"
             except:
                 logging.info(f"{tagname} does not exist in {reponame}, " +
                              f"bundling entire branch {branch}")

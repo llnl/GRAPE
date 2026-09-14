@@ -106,6 +106,8 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                                             "--submodule",
                                             "--noverify"],
                                             None)),
+                          (testGrape.writeGrapeConfig, project_dir),
+                          (git.add, (".grapeconfig", project_dir)),
                           (git.commit, ("-m \"added submodule1\"", project_dir)),
                           (git.push, ("origin --all", project_dir))])
         self._publicBranchesValid = True
