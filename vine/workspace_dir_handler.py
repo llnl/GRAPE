@@ -31,12 +31,15 @@ class WorkspaceDirHandler:
             return
 
         _base_dir = os.path.realpath(os.path.abspath(workspace_dir))
+        home_dir = os.path.realpath(os.path.expanduser('~'))
         git_workspace_dir = None
         while True:
             # .grapeconfig identifies the workspace GRAPE should manage. In
             # particular, this lets a command started in a nested repository
             # continue to use the top-level workspace configuration.
-            if os.path.exists(os.path.join(_base_dir, self.GRAPE_CONFIG)):
+            # The home config is global configuration, not a workspace marker.
+            if (_base_dir != home_dir and
+                    os.path.exists(os.path.join(_base_dir, self.GRAPE_CONFIG))):
                 self._workspace_dir = _base_dir
                 return
 
