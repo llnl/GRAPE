@@ -4,6 +4,7 @@ import io
 import logging
 import os
 import re
+import shlex
 import shutil
 import tempfile
 import time
@@ -15,6 +16,7 @@ from vine import vine_subprocess
 GRAPE_CONFIG = '.grapeconfig'
 GIT_VERY_VERBOSE = False
 GRAPE_GIT_CONFIG_FLAGS = []
+_MERGE_REF_RE = re.compile(r"(?:^|/)merge-requests/([^/]+)/merge$")
 
 def clearGitConfigFlags():
     global GRAPE_GIT_CONFIG_FLAGS
@@ -87,6 +89,17 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     return process_output
 
 
+def _query(arguments, *, execution_path, check=True):
+    """Run a read-only Git query, optionally treating failure as no result."""
+    command = " ".join(shlex.quote(argument) for argument in arguments)
+    try:
+        return gitcmd(command, "Git query failed", execution_path=execution_path)
+    except grape_errors.GrapeGitError:
+        if not check:
+            return ""
+        raise
+
+
 def add(filedescription, *, execution_path):
     return gitcmd(f"add {filedescription}",
                   f"Could not add {filedescription}",
@@ -153,6 +166,17 @@ def branchUpToDateWith(branchName, targetBranch, *, execution_path):
         logging.warning(f"Error {e.gitOutput}, thrown when checking if {targetBranch} is an ancestor of {branchName}.")
         logging.warning(f"Returning False")
         return False
+
+
+def changed_gitlinks(base, tip, *, execution_path):
+    """Return submodule paths changed between two revisions."""
+    paths = []
+    for line in _query(("diff", "--raw", base, tip, "--"), execution_path=execution_path).splitlines():
+        fields = line.split("\t", 1)
+        modes = fields[0].split()
+        if len(modes) >= 3 and (modes[1] == "160000" or modes[2] == "160000"):
+            paths.append(fields[1] if len(fields) > 1 else "<unknown>")
+    return paths
 
 
 def bundle(argstr, *, execution_path):
@@ -225,6 +249,36 @@ def commitDescriptionShort(committish, *, execution_path):
             except grape_errors.GrapeGitError as e:
                 raise e
     return descr
+
+
+def commit_message(ref, *, execution_path):
+    """Return a commit's complete message."""
+    return _query(("show", "-s", "--format=%B", ref), execution_path=execution_path).strip()
+
+
+def commits_that_change(ref, filename, pattern, limit=None, *, execution_path):
+    """Return first-parent commits with changes to filename that match ``pattern``."""
+    matcher = re.compile(pattern)
+    arguments = ["log", "--first-parent", "--format=%H", "--name-only"]
+    if limit is not None:
+        arguments.extend(("--max-count", str(limit)))
+    lines = _query((*arguments, ref, "--", filename), execution_path=execution_path).splitlines()
+    commits = []
+    current = None
+    matched = False
+    for line in lines:
+        if re.fullmatch(r"[0-9a-fA-F]{40}", line):
+            if current and matched:
+                commits.append(current)
+            current, matched = line, False
+        elif current and matcher.search(line):
+            matched = True
+    if current and matched:
+        commits.append(current)
+    if not commits:
+        raise grape_errors.GrapeGitError(f"Cannot read matching history for {ref}:{filename}")
+    return commits
+
 
 def config(argstr, arg2=None, *, execution_path):
     if arg2 is not None:
@@ -453,6 +507,32 @@ def hasBranch(b, *, execution_path):
     return b in branches
 
 
+def has_commit(ref, *, execution_path):
+    """Return whether ``ref`` resolves to a commit."""
+    try:
+        resolve(ref, execution_path=execution_path)
+    except grape_errors.GrapeGitError:
+        return False
+    return True
+
+
+def has_file(ref, path, *, execution_path):
+    """Return whether ``path`` is present in ``ref``'s tree."""
+    return bool(_query(("ls-tree", ref, "--", path), execution_path=execution_path,
+                       check=False).strip())
+
+
+def is_ancestor(ancestor, descendant, *, execution_path):
+    """Return whether ``ancestor`` is reachable from ``descendant``."""
+    try:
+        _query(("merge-base", "--is-ancestor", ancestor, descendant), execution_path=execution_path)
+    except grape_errors.GrapeGitError as error:
+        if error.code == 1:
+            return False
+        raise
+    return True
+
+
 def isWorkingDirectoryClean(printOutput=False, *, execution_path):
     statusOutput = status("-u --porcelain", execution_path=execution_path)
     toRet =  len(statusOutput.strip()) == 0
@@ -466,6 +546,21 @@ def isWorkingDirectoryClean(printOutput=False, *, execution_path):
 def log(args="", *, execution_path):
     return gitcmd(f"log {args}", "git log failed",
                   execution_path=execution_path)
+
+
+def local_merge_refs(*, execution_path):
+    """Return local merge-request refs normalized to canonical names."""
+    found = {}
+    output = _query(("for-each-ref", "--format=%(refname) %(objectname)",
+                     "refs/merge-requests", "refs/remotes"), execution_path=execution_path)
+    for line in output.splitlines():
+        fields = line.split()
+        if len(fields) != 2 or not _MERGE_REF_RE.search(fields[0]):
+            continue
+        ref = fields[0]
+        remote = re.match(r"refs/remotes/[^/]+/(.+)$", ref)
+        found["refs/" + remote.group(1) if remote else ref] = fields[1]
+    return found
 
 
 def mv(args, *, execution_path):
@@ -577,13 +672,32 @@ def push(args, throwOnFail=False, quietRemoteMessages=False, *, execution_path):
         raise e
 
 
+def read_file(ref, path, *, execution_path):
+    """Read ``path`` from ``ref`` and reject empty content."""
+    value = _query(("show", f"{ref}:{path}"), execution_path=execution_path)
+    if not value.strip():
+        raise grape_errors.GrapeGitError(f"Cannot read required history {ref}:{path}")
+    return value
+
+
 def rebase(args, *, execution_path):
     return gitcmd(f"rebase {args}", "Rebase failed",
                   execution_path=execution_path)
 
+def refs_containing(sha, *, execution_path):
+    """Return local refs containing ``sha``."""
+    return [line for line in _query(("for-each-ref", "--contains", sha, "--format=%(refname)"),
+                                    execution_path=execution_path).splitlines() if line]
+
+
 def reset(args, *, execution_path):
     return gitcmd(f"reset {args}", "Reset failed",
                   execution_path=execution_path)
+
+def resolve(ref, *, execution_path):
+    """Resolve ``ref`` to a verified commit SHA."""
+    return _query(("rev-parse", "--verify", f"{ref}^{{commit}}"), execution_path=execution_path).strip()
+
 
 def revert(args, *, execution_path):
     return gitcmd(f"revert {args}", "Revert failed",
