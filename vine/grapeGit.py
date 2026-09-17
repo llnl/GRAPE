@@ -273,9 +273,9 @@ def commits_that_changed_file_in_merge_history(ref, filename, pattern, limit=Non
 
     A merge's parent ordering can be pictured as::
 
-        public:   A---B-----------M
-                       \\         /
-        feature:       C---D-----
+        public:   A---B----------M
+                      \\        /
+        feature:       C---D----
 
         M^1 = B  (public branch before the merge)
         M^2 = D  (merged feature-branch tip)
