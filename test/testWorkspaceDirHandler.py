@@ -51,3 +51,32 @@ def test_nearest_git_is_fallback_without_grapeconfig(tmp_path):
     handler.workspace_dir = str(nested)
 
     assert handler.workspace_dir == os.path.realpath(str(nested))
+
+
+def test_home_grapeconfig_is_not_a_workspace_marker(tmp_path, monkeypatch):
+    """A global home config does not define a workspace for child paths."""
+    home = tmp_path / 'home'
+    cwd = home / 'cwd'
+    cwd.mkdir(parents=True)
+    _touch(home / '.grapeconfig')
+    monkeypatch.setenv('HOME', str(home))
+
+    handler = WorkspaceDirHandler()
+    handler.workspace_dir = str(cwd)
+
+    assert handler._workspace_dir is None
+
+
+def test_home_grapeconfig_does_not_override_nearest_git(tmp_path, monkeypatch):
+    """A temporary Git directory remains the workspace under home config."""
+    home = tmp_path / 'home'
+    cwd = home / 'cwd'
+    cwd.mkdir(parents=True)
+    _touch(home / '.grapeconfig')
+    (cwd / '.git').mkdir()
+    monkeypatch.setenv('HOME', str(home))
+
+    handler = WorkspaceDirHandler()
+    handler.workspace_dir = str(cwd)
+
+    assert handler.workspace_dir == os.path.realpath(str(cwd))
