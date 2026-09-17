@@ -172,6 +172,12 @@ def changed_gitlinks(base, tip, *, execution_path):
     """Return submodule paths changed between two revisions."""
     paths = []
     for line in _query(("diff", "--raw", base, tip, "--"), execution_path=execution_path).splitlines():
+        # A raw diff line has metadata followed by a tab and its path, for example:
+        # :160000 160000 0123456 89abcde M\tsubmodules/example
+        # The first two fields after the leading colon are the old and new modes.
+        # Mode 160000 is a Git "gitlink": the entry is a submodule commit pointer,
+        # rather than a normal file. Check both modes so additions, removals, and
+        # commit-pointer updates are all reported as changed submodules.
         fields = line.split("\t", 1)
         modes = fields[0].split()
         if len(modes) >= 3 and (modes[1] == "160000" or modes[2] == "160000"):
@@ -256,10 +262,62 @@ def commit_message(ref, *, execution_path):
     return _query(("show", "-s", "--format=%B", ref), execution_path=execution_path).strip()
 
 
-def commits_that_change(ref, filename, pattern, limit=None, *, execution_path):
-    """Return first-parent commits with changes to filename that match ``pattern``."""
+def commits_that_changed_file_in_merge_history(ref, filename, pattern, limit=None,
+                                               include_second_parent=False, *, execution_path):
+    """Return matching commits that changed a file in a merge history.
+
+    By default, follow only first-parent history: the branch's integration path.
+    This reports the merge that brought a change into the branch without also
+    listing every commit from the merged topic branch. Set
+    ``include_second_parent`` to search both parents of merges as well.
+
+    A merge's parent ordering can be pictured as::
+
+        public:   A---B-----------M
+                       \\         /
+        feature:       C---D-----
+
+        M^1 = B  (public branch before the merge)
+        M^2 = D  (merged feature-branch tip)
+
+    For example, a public-package history scan should use parent 1 to follow
+    the public branch's integration path.  For a merge commit, comparing its
+    final tree with parent 1 shows the package assignment changes introduced
+    to the public branch, including conflict-resolution changes.  Parent 2 is
+    the merged feature branch's tip; comparing against it instead describes
+    changes made by the public branch relative to that feature, which is not
+    the update being landed.
+
+    Parent selection examples:
+
+        | History                 | Useful for                                      |
+        |-------------------------|-------------------------------------------------|
+        | Parent 1 (default)      | Public-package stable history and a concise    |
+        |                         | mainline audit trail.                          |
+        | Parent 2 (opt-in)       | Inspecting feature-branch details, debugging,  |
+        |                         | security review, or finding a backport commit. |
+
+    Args:
+        ref: Revision at which to begin the history walk.
+        filename: Path whose changes should be considered.
+        pattern: Regular expression that the changed path must match.
+        limit: Optional maximum number of commits Git returns after the
+            revision walk and ``filename`` path filter are applied.  The
+            additional ``pattern`` check is applied afterward and may reduce
+            the number returned by this helper.
+        include_second_parent: Whether to include merged topic-branch history.
+        execution_path: Repository in which to run Git.
+
+    Returns:
+        A list of matching commit SHAs.
+
+    Raises:
+        GrapeGitError: If no matching history can be found.
+    """
     matcher = re.compile(pattern)
-    arguments = ["log", "--first-parent", "--format=%H", "--name-only"]
+    arguments = ["log", "--format=%H", "--name-only"]
+    if not include_second_parent:
+        arguments.append("--first-parent")
     if limit is not None:
         arguments.extend(("--max-count", str(limit)))
     lines = _query((*arguments, ref, "--", filename), execution_path=execution_path).splitlines()
@@ -509,11 +567,7 @@ def hasBranch(b, *, execution_path):
 
 def has_commit(ref, *, execution_path):
     """Return whether ``ref`` resolves to a commit."""
-    try:
-        resolve(ref, execution_path=execution_path)
-    except grape_errors.GrapeGitError:
-        return False
-    return True
+    return bool(resolve(ref, check=False, execution_path=execution_path))
 
 
 def has_file(ref, path, *, execution_path):
@@ -523,7 +577,12 @@ def has_file(ref, path, *, execution_path):
 
 
 def is_ancestor(ancestor, descendant, *, execution_path):
-    """Return whether ``ancestor`` is reachable from ``descendant``."""
+    """Return whether ``ancestor`` is reachable from ``descendant``.
+
+    ``git merge-base --is-ancestor`` exits with status 0 when the ancestor
+    relationship exists and status 1 when it does not.  Other failures remain
+    errors because they indicate that Git could not perform the query.
+    """
     try:
         _query(("merge-base", "--is-ancestor", ancestor, descendant), execution_path=execution_path)
     except grape_errors.GrapeGitError as error:
@@ -694,9 +753,17 @@ def reset(args, *, execution_path):
     return gitcmd(f"reset {args}", "Reset failed",
                   execution_path=execution_path)
 
-def resolve(ref, *, execution_path):
-    """Resolve ``ref`` to a verified commit SHA."""
-    return _query(("rev-parse", "--verify", f"{ref}^{{commit}}"), execution_path=execution_path).strip()
+def resolve(ref, *, execution_path, check=True):
+    """Resolve ``ref`` to a verified commit SHA.
+
+    Args:
+        ref: Revision or ref name to resolve.
+        execution_path: Repository in which to run Git.
+        check: Raise on an unresolved ref when true; return an empty string
+            when false.
+    """
+    return _query(("rev-parse", "--verify", f"{ref}^{{commit}}"),
+                  execution_path=execution_path, check=check).strip()
 
 
 def revert(args, *, execution_path):
