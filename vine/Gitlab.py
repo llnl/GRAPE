@@ -10,7 +10,10 @@ import subprocess
 import sys
 import time
 import zipfile
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 try:
     grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
@@ -22,6 +25,37 @@ from vine import config_parser_global
 from vine import GrapeKeyring
 from vine import utility
 from vine.option import Option
+
+# These statuses describe completed or abandoned cars rather than cars that
+# can currently contribute to a merge train.  Unknown statuses are retained
+# so a new GitLab active status cannot silently create a false negative.
+TERMINAL_MERGE_TRAIN_STATUSES = frozenset(
+    {"merged", "canceled", "cancelled", "skipped", "failed", "broken", "expired"}
+)
+
+
+@dataclass(frozen=True)
+class MergeTrainCar:
+    """Describe one active merge-train car in queue order.
+
+    Attributes:
+        merge_request: GitLab merge-request IID as a string.
+        ref: Canonical merge-request merge ref.
+        status: GitLab-reported car status.
+        queue_index: Zero-based position among active cars, oldest first.
+        sha: Merge-result SHA when GitLab returned one, otherwise ``None``.
+    """
+
+    merge_request: str
+    ref: str
+    status: str
+    queue_index: int
+    sha: str | None = None
+
+
+class MergeTrainError(RuntimeError):
+    """Indicate that active merge-train cars could not be queried safely."""
+
 
 # Grape has the following definitions, most strongly correllated with Bitbucket definitions:
 # Project - collection of repositories (roughly analogous to a Gitlab Group)
@@ -273,6 +307,132 @@ class GrapeGitlabAdapter:
             raise SystemExit("Abort")
 
         return Repo(project, self._gitlab)
+
+
+def _object_field(value, name, default=None):
+    """Read a field from either a GRAPE mapping or an API resource object."""
+
+    if isinstance(value, Mapping):
+        return value.get(name, default)
+    return getattr(value, name, default)
+
+
+def active_merge_train_cars(
+    repository: Path,
+    target_branch: str,
+    verbose: bool = False,
+) -> list[MergeTrainCar]:
+    """Query active merge-train cars in queue order.
+
+    Args:
+        repository: Workspace whose ``.grapeconfig`` identifies the GitLab
+            project and authentication settings.
+        target_branch: Public branch targeted by the candidate, such as
+            ``develop`` or ``production``.
+        verbose: Retained for API compatibility; logging is configured by
+            the caller.
+
+    Returns:
+        Active cars ordered from oldest to newest.  Cars before a candidate
+        car are ahead of it; cars after it are behind it.
+
+    Raises:
+        MergeTrainError: If the workspace configuration is incomplete, GRAPE
+            cannot authenticate or query GitLab, or a returned merge-train
+            car does not contain the expected status and merge-request ID.
+
+    Notes:
+        GRAPE's merge-down implementation uses the same GitLab endpoint with
+        a target-branch path because the Python GitLab wrapper does not expose
+        a target-branch filter directly.  ``scope=active`` asks GitLab to
+        exclude terminal cars server-side; the returned statuses are still
+        checked locally so an unexpected API response cannot silently create
+        a false negative.  Any unrecognized status is retained conservatively:
+        GitLab may add an active status before this detector is updated.
+    """
+
+    logging.info(
+        f"Querying GRAPE/GitLab for active merge-train cars targeting "
+        f"{target_branch}.",
+    )
+    try:
+        # Load both the user's GRAPE configuration and the workspace config.
+        # GrapeGitlabAdapter itself uses the global parser for defaults, so
+        # loading this explicitly is important when the repository is not cwd.
+        config_parser_global.read(workspace_dir=str(repository.resolve()))
+        config = config_parser_global.grapeConfig()
+        code_reviews_url = config.get("project", "codeReviewsURL")
+        project_group = config.get("project", "name")
+        repository_name = config.get("repo", "name")
+        verify_ssl = config.getboolean("project", "verifyssl", fallback=True)
+        ssh_pat_port = config.getint("repo", "ssh_pat_port", fallback=7999)
+        ssh_pat_url = config.get("repo", "ssh_pat_url", fallback="git@gitlab")
+        curl = config.get("repo", "curl", fallback="/usr/bin/curl")
+
+        adapter = GrapeGitlabAdapter(
+            url=code_reviews_url,
+            verify=verify_ssl,
+            port=ssh_pat_port,
+            ssh_path=ssh_pat_url,
+            curl=curl,
+            group=project_group,
+            workspace_dir=str(repository.resolve()),
+        )
+        repo = adapter.repo(project_group, repository_name)
+        project_id = repo.project.id
+        path = f"/projects/{project_id}/merge_trains/{target_branch}"
+        cars = repo.project.merge_trains.list(
+            all=True, path=path, scope="active", sort="asc"
+        )
+    except (Exception, SystemExit) as error:
+        raise MergeTrainError(
+            f"Cannot query active merge-train cars for {target_branch} through GRAPE: "
+            f"{error}"
+        ) from error
+
+    selected: list[MergeTrainCar] = []
+    terminal: list[str] = []
+    for car in cars:
+        status = str(_object_field(car, "status", "") or "").strip().lower()
+        merge_request = _object_field(car, "merge_request")
+        merge_request_id = _object_field(merge_request, "iid")
+        if not status or merge_request_id is None:
+            raise MergeTrainError(
+                "GRAPE returned a malformed merge-train car without a status "
+                "or merge-request IID"
+            )
+        merge_ref = f"refs/merge-requests/{merge_request_id}/merge"
+        if status in TERMINAL_MERGE_TRAIN_STATUSES:
+            terminal.append(f"!{merge_request_id} ({status})")
+            continue
+        merge_sha = _object_field(car, "sha")
+        if not merge_sha:
+            # GitLab versions have exposed the merge-result SHA either on the
+            # car itself or on its train pipeline.  Keep both forms so the
+            # SHA can identify the current CI car when an IID variable is
+            # absent.
+            pipeline = _object_field(car, "pipeline")
+            merge_sha = _object_field(pipeline, "sha")
+        selected.append(
+            MergeTrainCar(
+                merge_request=str(merge_request_id),
+                ref=merge_ref,
+                status=status,
+                queue_index=len(selected),
+                sha=str(merge_sha) if merge_sha else None,
+            )
+        )
+        logging.debug(
+            f"Active merge-train car: MR=!{merge_request_id} status={status} "
+            f"queue-position={len(selected)} ref={merge_ref}.",
+        )
+
+    logging.info(
+        f"GRAPE/GitLab returned {len(cars)} merge-train car(s); selected "
+        f"{len(selected)} active car(s) in queue order"
+        + (f" and ignored {len(terminal)} terminal car(s)." if terminal else "."),
+    )
+    return selected
 
 
 def _truncate_preview(text, limit=100):
