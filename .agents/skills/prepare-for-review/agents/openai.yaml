@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prepare for Review"
+  short_description: "Clean up a branch before review"
+  default_prompt: "Use $prepare-for-review to trim unrelated changes, clean up review noise, verify the branch still passes tests, and report that it is ready for review."
